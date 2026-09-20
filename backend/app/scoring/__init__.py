@@ -6,6 +6,8 @@ model in the path. The dependency direction is one-way: `ai` may read
 scoring output, scoring may not ask `ai` anything.
 """
 
+from . import coverage, scenarios
+from .coverage import Recommendation, recommend_limit
 from .fixes import Fix, build as build_fixes, strengths
 from .grades import GRADE_SUMMARY, grade_for, points_to_next_grade
 from .pricing import (
@@ -28,4 +30,5 @@ __all__ = [
     "band_for_headcount", "limit_for_band", "limit_label",
     "DEFAULT_BAND", "DEFAULT_LIMIT",
     "Fix", "build_fixes", "strengths",
+    "coverage", "scenarios", "recommend_limit", "Recommendation",
 ]

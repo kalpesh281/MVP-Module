@@ -9,25 +9,26 @@
 | # | What | Where | Cost | Notes |
 |---|---|---|---|---|
 | 1 | **MongoDB Atlas cluster** | cloud.mongodb.com | **Free** (M0 tier) | Create cluster → database user with `readWrite` on `scorecard` → network access allowlist → copy the connection string |
-| 2 | **One AI provider key** | platform.openai.com or console.anthropic.com | Pay-as-you-go, ≈ **₹13/scan** | You already have an OpenAI key. That is enough to start. |
+| 2 | **One AI provider key** | console.groq.com | **Free** tier, ₹0/scan | `GROQ_API_KEY`. Groq has served 100% of real scans. OpenRouter (`OPENROUTER_API_KEY`) is the configured fallback and is optional. **Neither is a hard requirement** — with no key set, every scan still produces a score, a grade, a premium, a cover recommendation and a scenario; only the prose falls back to static copy. `test_scan_without_any_provider` proves it. |
 | 3 | **Python 3.11+** | local | Free | `python3 --version` |
 | 4 | **Node 20+** | local | Free | `node --version` |
 
-That is the entire hard requirement list. Four items, one of which costs money.
+That is the entire hard requirement list. Four items, none of which costs money — the AI key is a free tier and is optional on top of that.
 
 ### Needed before launch, not before coding
 
 | # | What | Where | Cost | Blocks |
 |---|---|---|---|---|
-| 5 | **HIBP API key** | haveibeenpwned.com/API/Key | ≈ ₹350/month | Without it the breached-credentials check returns `inconclusive` and its 20 points are excluded from scoring. Everything else works. |
-| 6 | **Domain + hosting** | Vercel (frontend) + Railway/Render (backend) | Free tier → ≈ ₹500/month | Only needed to ship publicly |
+| 5 | **Cert Spotter API key** | sslmate.com/certspotter | **Free** — 100 requests/hour | `CERTSPOTTER_TOKEN`. The primary certificate-transparency source for the subdomain check. Without it we fall back to crt.sh, which answered roughly **1 time in 6** in testing and takes 3.8–8.5 s against Cert Spotter's 1.2–2.6 s. A CT outage blanks the grade entirely (subdomains 23 + creds_accounts 12 = 35, over the 25-point suppression threshold), so in practice this key is close to required. |
+| 6 | **HIBP API key** | haveibeenpwned.com/API/Key | ≈ ₹350/month | Without it the breached-credentials check returns `inconclusive` and its 20 points (`creds` 8 + `creds_accounts` 12) are excluded, so a live scan is scored out of **88**, not 100. Everything else works. Note the wording rule: without the keyed half we say "no disclosed breach on record", never "no leaked credentials". |
+| 7 | **Domain + hosting** | Vercel (frontend) + Railway/Render (backend) | Free tier → ≈ ₹500/month | Only needed to ship publicly. Also the point at which `USER_AGENT` should stop pointing at a GitHub profile and start pointing at a company page. |
 
 ### Needed later, not now
 
 | # | What | Needed for |
 |---|---|---|
-| 7 | Shodan API key (≈ ₹6,000/mo) | Tier 2 — exposed services check |
-| 8 | Google Cloud / Microsoft app registration | Tier 3 — OAuth connectors |
+| 8 | Shodan API key (≈ ₹6,000/mo) | Tier 2 — exposed services check |
+| 9 | Google Cloud / Microsoft app registration | Tier 3 — OAuth connectors |
 | 9 | **IRDAI-licensed broker partner** | Phase 4 — actually placing policies |
 | 10 | **Insurer partner** | Validating the premium tables, which are currently placeholders |
 

@@ -41,21 +41,47 @@ _CERTSPOTTER = "https://api.certspotter.com/v1/issuances"
 #   crt.sh        1/6 succeeded, 3.6-8.5s, ReadTimeout or 502 otherwise
 #   certspotter   6/6 succeeded, 1.2-2.6s
 #
-# So certspotter leads and crt.sh is the second opinion, both issued
-# concurrently and whatever answers is used. crt.sh returns far more rows
-# when it works — 717 for zerodha.com against certspotter's 39 — which is
-# why it stays in rather than being dropped.
+# Cert Spotter is the SCORING SOURCE. crt.sh is a fallback, used only when
+# Cert Spotter returns nothing, and never merged into a successful result.
 #
-# Neither is authoritative on its own: a CT log records certificates, not
-# hosts, so this is always a lower bound on a company's real surface. We
-# say "publicly visible" rather than "all" for that reason.
+# It used to be a race: both issued together, whatever answered inside a
+# 5s wall was unioned, and the grade followed. crt.sh answers in 3.8-8.5s
+# and Cert Spotter in 1.2-2.6s, so crt.sh made the deadline perhaps one
+# time in six — and when it did it contributed far more hosts (717 rows
+# for zerodha.com against Cert Spotter's 39). perseus.de scored D (45) on
+# one run and B (72) an hour later for exactly this reason, with nothing
+# about the company having changed.
+#
+# A grade that depends on which server answered first is not a grade. So
+# one source scores, and the other only covers its absence — which is
+# recorded on the finding, because a result from the fallback is not the
+# same measurement and must not silently look like one.
+#
+# The honest cost: Cert Spotter on the free tier cannot enumerate a large
+# domain. Deep pagination trips its burst limit and 429s partway through
+# (measured), so `truncated` is a real state and is reported rather than
+# hidden. Neither source is authoritative anyway — a CT log records
+# certificates, not hosts — so this is always a lower bound. We say
+# "publicly visible" rather than "all" for that reason.
 _CERTSPOTTER_TIMEOUT = 6.0
-_CERTSPOTTER_PAGES = 2          # 100 issuances per page
+_CERTSPOTTER_PAGES = 2          # at most; a short page ends it early
+_CERTSPOTTER_PAGE_SIZE = 100    # the API's page size, used to spot the last page
 
 # The two phases of this check, both bounded, both inside
 # TIMEOUTS['subdomains'] with room to spare.
-_CT_BUDGET = 5.0        # certificate transparency lookups
-_PROBE_BUDGET = 8.0     # the live-host sweep that follows
+# 6.5 + 7.5 = 14.0, inside TIMEOUTS['subdomains'] = 15.0 with a second of
+# slack for the client setup and the scoring that follows.
+#
+# The CT half was 5.0s, which was sized when both sources were merged and
+# Cert Spotter almost always answered first. Now that crt.sh is the sole
+# fallback it has to be able to finish: measured at exactly 5.0s for
+# cowbellcyber.ai, it was being cancelled on the wall a fraction before
+# returning, so a Cert Spotter 429 took the whole check to `inconclusive`
+# — and 23 inconclusive points on top of the 12 we always carry suppress
+# the grade entirely. A working fallback that is never waited for is not
+# a fallback.
+_CT_BUDGET = 6.5        # certificate transparency lookups
+_PROBE_BUDGET = 7.5     # the live-host sweep that follows
 # Must leave room inside TIMEOUTS['subdomains'] for the probe sweep
 # that follows. crt.sh answers in 3-4s when healthy.
 # Measured 2026-09-20: three consecutive requests for the same domain
@@ -72,6 +98,10 @@ _CRTSH_RETRY_DELAY = 1.0
 # cache keeps repeat scans of the same domain off the service entirely;
 # certificate transparency changes on the order of days, not seconds.
 _ct_cache: dict[str, set[str]] = {}
+
+# Domains whose Cert Spotter enumeration stopped short — our page cap or
+# their burst limit. Reported on the finding, never silently ignored.
+_truncated: set[str] = set()
 
 # `Index of /` is Apache/nginx autoindex. It means the directory has no
 # index file and the server is listing its contents to anyone who asks.
@@ -142,15 +172,17 @@ async def _from_crtsh(domain: str, client: httpx.AsyncClient) -> set[str]:
 
 async def _from_certspotter(domain: str, client: httpx.AsyncClient) -> set[str]:
     """Hostnames from SSLMate's Cert Spotter. Faster and far more reliable
-    than crt.sh, but paginated at 100 issuances a page and unauthenticated
-    requests are rate-limited, so we take two pages and stop."""
+    than crt.sh, but paginated at 100 issuances a page, so we take two
+    pages and stop."""
     hosts: set[str] = set()
     after: str | None = None
-    # A 429 here is not a transient failure — it is the unauthenticated
-    # quota, and it stays exhausted for the rest of the hour. Set
-    # CERTSPOTTER_API_KEY (free) to raise it to 100 queries/hour.
+    # A 429 here is not a transient failure — the quota stays exhausted for
+    # the rest of the hour. Measured 2026-09-20 on a free keyed account:
+    # 100 requests/hour, over a smaller burst bucket that drains in a few
+    # rapid calls and refills on its own. The short-page break below keeps
+    # a normal scan to one request, which stays clear of both.
 
-    for _ in range(_CERTSPOTTER_PAGES):
+    for page in range(_CERTSPOTTER_PAGES):
         params: dict[str, str] = {
             "domain": domain,
             "include_subdomains": "true",
@@ -163,6 +195,13 @@ async def _from_certspotter(domain: str, client: httpx.AsyncClient) -> set[str]:
         response = await client.get(_CERTSPOTTER, params=params,
                                     headers=headers,
                                     timeout=_CERTSPOTTER_TIMEOUT)
+        if response.status_code == 429 and hosts:
+            # The burst bucket ran out partway through. Keep the pages we
+            # already have and say the list is short, rather than throwing
+            # away a good first page and falling back to a different
+            # source — which is the swap that moved the grade.
+            _truncated.add(domain)
+            break
         response.raise_for_status()
         rows = response.json()
         if not rows:
@@ -172,54 +211,81 @@ async def _from_certspotter(domain: str, client: httpx.AsyncClient) -> set[str]:
                 name = _clean_san(raw)
                 if name and name.endswith(f".{domain}"):
                     hosts.add(name)
+        # A short page is the last page. Without this we spend a second
+        # request discovering that page two is empty — and at 10 requests
+        # an hour that doubles the cost of every scan for nothing.
+        if len(rows) < _CERTSPOTTER_PAGE_SIZE:
+            break
+        if page == _CERTSPOTTER_PAGES - 1:
+            # Hit our own page cap with more still to come.
+            _truncated.add(domain)
         after = str(rows[-1].get("id", "")) or None
         if after is None:
             break
     return hosts
 
 
-async def _from_ct(domain: str, client: httpx.AsyncClient) -> tuple[set[str], str]:
-    """Both CT sources at once. Returns (hostnames, what we used).
+async def _from_ct(domain: str, client: httpx.AsyncClient) -> tuple[set[str], str, bool]:
+    """Hostnames from certificate transparency.
 
-    Concurrent rather than sequential, and satisfied by either: waiting for
-    crt.sh to time out before trying the other one costs 8 seconds on the
-    majority of scans, and those 8 seconds were the difference between the
-    check completing and the runner killing it.
+    Returns (hostnames, source, degraded).
+
+    **Cert Spotter scores. crt.sh only covers its absence.** Both are still
+    issued together — waiting for Cert Spotter to fail before starting an
+    8-second crt.sh request would blow the check's budget — but the result
+    is chosen by policy, not by whichever finished first:
+
+        Cert Spotter answered  ->  use it, degraded=False
+        it did not             ->  use crt.sh, degraded=True
+        neither                ->  raise
+
+    The two are never merged. Merging is what made the grade depend on a
+    race, because crt.sh makes the deadline about one time in six and
+    contributes an order of magnitude more hosts when it does.
     """
-    jobs = {
-        asyncio.create_task(_from_certspotter(domain, client)): "Cert Spotter",
-        asyncio.create_task(_from_crtsh(domain, client)): "crt.sh",
-    }
+    primary = asyncio.create_task(_from_certspotter(domain, client))
+    backup = asyncio.create_task(_from_crtsh(domain, client))
+    jobs = {primary: "Cert Spotter", backup: "crt.sh"}
 
     # A shared budget, not the sum of two. crt.sh times out at 8s on most
     # requests; waiting the full 8s for it after Cert Spotter has already
-    # answered in 1.5s left no room for the host sweep that follows, which
-    # is what made this check time out on large domains.
+    # answered in 1.5s left no room for the host sweep that follows.
     done, pending = await asyncio.wait(jobs, timeout=_CT_BUDGET)
     for task in pending:
         task.cancel()
     if pending:
         await asyncio.gather(*pending, return_exceptions=True)
 
-    hosts: set[str] = set()
-    used: list[str] = []
     failed: list[str] = [f"{jobs[t]}: no answer in {_CT_BUDGET:.0f}s" for t in pending]
 
-    for task in done:
-        label = jobs[task]
+    def outcome(task: asyncio.Task) -> set[str] | None:
+        if task not in done:
+            return None
         exc = task.exception()
         if exc is not None:
             reason = type(exc).__name__
             if isinstance(exc, httpx.HTTPStatusError):
                 reason = f"HTTP {exc.response.status_code}"
-            failed.append(f"{label}: {reason}")
-            continue
-        hosts |= task.result()
-        used.append(label)
+            failed.append(f"{jobs[task]}: {reason}")
+            return None
+        return task.result()
 
-    if not used:
-        raise RuntimeError("; ".join(failed))
-    return hosts, " + ".join(sorted(used))
+    from_primary = outcome(primary)
+    from_backup = outcome(backup)
+
+    # `is not None`, not truthiness. An empty set is an answer: a company
+    # whose only certificate is a wildcard names no host, and that is a
+    # real finding. Treating it as a failure sent those companies to the
+    # other source and scored them on a different measurement — the exact
+    # swap this function exists to prevent.
+    if from_primary is not None:
+        return from_primary, "Cert Spotter", False
+    if from_backup is not None:
+        # A different measurement, not a worse one. Said out loud on the
+        # finding so a grade produced this way is identifiable.
+        return from_backup, "crt.sh", True
+
+    raise RuntimeError("; ".join(failed))
 
 
 async def _probe(host: str, client: httpx.AsyncClient, gate: asyncio.Semaphore) -> dict | None:
@@ -293,8 +359,9 @@ async def run(domain: str, sans: list[str] | None = None) -> CheckResult:
     async with httpx.AsyncClient(
         follow_redirects=False, headers={"User-Agent": USER_AGENT}
     ) as client:
+        degraded = False
         try:
-            from_ct, used = await _from_ct(domain, client)
+            from_ct, used, degraded = await _from_ct(domain, client)
             candidates |= from_ct
             source = used if from_ct else source
         except Exception as exc:
@@ -366,12 +433,20 @@ async def run(domain: str, sans: list[str] | None = None) -> CheckResult:
 
     evidence = {
         "source": source,
+        # True when the scoring source was unavailable and this came from
+        # the fallback instead. A different measurement, recorded rather
+        # than blended in, so two scans of one domain that disagree can be
+        # told apart afterwards instead of looking like the company moved.
+        "source_degraded": degraded,
         "hostnames_found": total_found,
         "probed": probed,
         "sweep_complete": swept_all,
         "live": len(live),
         "risky_hosts": risky,
-        "truncated": total_found > SUBDOMAIN_MAX_PROBES,
+        # Either we stopped probing, or the enumeration itself stopped
+        # short. Both mean the host list is a floor, not a census.
+        "truncated": total_found > SUBDOMAIN_MAX_PROBES or domain in _truncated,
+        "enumeration_complete": domain not in _truncated,
     }
 
     if not deductions:

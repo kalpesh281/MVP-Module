@@ -25,7 +25,7 @@ RATE_VERSION = "v1.1"
 # --- identity ------------------------------------------------------------
 USER_AGENT = os.getenv(
     "USER_AGENT",
-    "CyberScorecard/0.1 (+https://example.com/about-our-scanner)",
+    "CyberScorecard/0.1 (+https://github.com/kalpesh281)",
 )
 
 # --- data sources --------------------------------------------------------
@@ -145,6 +145,11 @@ AI_CHAINS = {
     # Call 1 — structured extraction from a webpage. Runs on every scan,
     # so it leads with the cheapest model that can do the job.
     "classify": ["groq-small", "groq-large", "or-deepseek", "or-nex-mini"],
+    # Calls 4+5 — the coverage rationale and the claim narrative, issued
+    # as one request concurrently with the report. Same voice as the
+    # report, so the same chain: these two blocks are the ones an insurance
+    # person reads, and a weaker model shows immediately.
+    "guidance": ["groq-large", "or-ultra", "or-super", "groq-small"],
     # Call 3 — cheap, cached, low stakes.
     "qa":       ["groq-small", "or-deepseek", "groq-large"],
 }
@@ -171,7 +176,9 @@ AI_TIMEOUT = float(os.getenv("AI_TIMEOUT", "20"))
 AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "4000"))
 
 # --- rate limiting -------------------------------------------------------
-RATE_LIMIT_PER_IP = 10          # scans per hour
+# Overridable so a development machine does not spend an afternoon locked
+# out by its own test runs. The default is unchanged and is what ships.
+RATE_LIMIT_PER_IP = int(os.getenv("RATE_LIMIT_PER_IP", "10"))   # scans per hour
 RATE_LIMIT_WINDOW_S = 3600
 MAX_CONCURRENT_SCANS = 20
 

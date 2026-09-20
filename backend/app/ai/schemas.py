@@ -72,3 +72,43 @@ class Answer(BaseModel):
     grounded: bool = Field(
         description="False if the question cannot be answered from the report alone."
     )
+
+
+class CoverageRationale(BaseModel):
+    """Module A. Justifies a limit that a rules engine already chose.
+
+    Note the absence, again: no limit field, no premium field, no cost
+    figure. The model cannot propose a different number because there is
+    nowhere for a different number to go.
+    """
+
+    headline: str = Field(description="One short line, e.g. 'Recommended: Rs 5 Cr'.")
+    reasoning: str = Field(description="Two to three sentences. Name the specific reason.")
+    downside: str = Field(description="One sentence: what the next limit down leaves exposed.")
+
+
+class ScenarioCopy(BaseModel):
+    """Module B. Title and narrative only.
+
+    Cost lines, covered, not-covered and the sublimit warning are rendered
+    verbatim from the catalog and are deliberately not in this schema. A
+    model inventing a coverage statement is the one mistake this product
+    cannot make, so it is not given the opportunity.
+    """
+
+    title: str = Field(description="Short, concrete, second person. No exclamation marks.")
+    narrative: str = Field(
+        description="Exactly two sentences on how this specific company gets hit."
+    )
+
+
+class Guidance(BaseModel):
+    """Calls 4 and 5, issued as one request.
+
+    Two prose blocks that need the same context. Sending them separately
+    would add a second round trip to a scan that already spends its whole
+    budget, for no gain the reader can see.
+    """
+
+    coverage: CoverageRationale
+    scenario: ScenarioCopy | None = None

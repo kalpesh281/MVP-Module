@@ -38,10 +38,12 @@ from .scanner import runner
 from .scanner.base import CheckResult
 from .scoring import (
     band_for_headcount,
+    coverage as coverage_module,
     limit_for_band,
     build_fixes,
     premium_for,
     premium_table,
+    scenarios as scenarios_module,
     score,
     strengths,
 )
@@ -77,6 +79,12 @@ def _cached_event(doc: dict[str, Any]) -> dict[str, Any]:
         "profile": doc.get("profile"),
         "premium": doc.get("premium"),
         "premium_table": doc.get("premium_table"),
+        "coverage": doc.get("coverage"),
+        # Re-rendered from the catalog, not read back verbatim. See
+        # scenarios.refresh — a cached scan must not keep serving coverage
+        # text that has since been corrected.
+        "scenario": scenarios_module.refresh(doc.get("scenario")),
+        "scenarios": scenarios_module.refresh_all(doc.get("scenarios")),
         "fixes": report.get("fixes", []),
         "combined_if_all_fixed": report.get("combined_if_all_fixed"),
         "strengths": report.get("strengths", []),
@@ -152,26 +160,48 @@ async def run(domain: str, *, use_cache: bool = True) -> AsyncIterator[dict[str,
     fixes, combined = build_fixes(findings, scored, revenue_band=band, limit=limit)
     good = strengths(results)
 
+    # Stage 2. Both blocks are complete numbers before the model is asked
+    # for a single word — the limit, its three priced options, the cost
+    # lines and the two sentences about what a policy pays. The AI call
+    # below can only add prose to them, and if it never runs they still
+    # render. docs/coverage-guidance.md
+    cover = coverage_module.build(scored.grade, band, profile)
+    scenario = scenarios_module.build(findings)
+    # Every scenario they qualify for, worst first. The browser picks from
+    # this list as fixes are ticked, so closing one exposure reveals the
+    # next underneath it with no request in flight.
+    scenario_list = scenarios_module.rank(findings)
+
     # --- explanation half: prose only ------------------------------------
     # Bounded by what is left of the scan budget, not by the provider's
     # patience. A chain of four models at 20s each is 80s of failover, and
     # the user is looking at a spinner for every one of them. Better words
     # are not worth a minute; the static copy is already publishable.
     report_budget = SCAN_HARD_LIMIT - (time.monotonic() - started)
+    guided_by: str | None = None
     if report_budget < _MIN_REPORT_BUDGET:
         log.info("report for %s skipped: %.1fs left of the scan budget",
                  domain, report_budget)
         prose = ai.report.static(scored, fixes, good)
+        ai.guidance.apply_static(cover, scenario)
     else:
+        # Concurrently, on a shared budget. They need no output from each
+        # other, and issued in sequence the second one's latency would land
+        # on top of the first — which is how a 13-second scan becomes a
+        # 26-second one for prose the reader cannot tell apart.
         try:
-            prose = await asyncio.wait_for(
-                ai.report.write(domain, scored, fixes, findings, good, profile),
+            prose, guided_by = await asyncio.wait_for(
+                asyncio.gather(
+                    ai.report.write(domain, scored, fixes, findings, good, profile),
+                    ai.guidance.write(domain, cover, scenario, profile),
+                ),
                 report_budget,
             )
         except (asyncio.TimeoutError, TimeoutError):
             log.info("report for %s exceeded its %.1fs budget, using static copy",
                      domain, report_budget)
             prose = ai.report.static(scored, fixes, good)
+            ai.guidance.apply_static(cover, scenario)
 
     scan_id = store.new_scan_id()
     table = premium_table(band, limit)
@@ -190,6 +220,9 @@ async def run(domain: str, *, use_cache: bool = True) -> AsyncIterator[dict[str,
         "profile": profile.model_dump() if profile else None,
         "premium": premium.as_dict(),
         "premium_table": table,
+        "coverage": cover,
+        "scenario": scenario,
+        "scenarios": scenario_list,
         "fixes": [f.as_dict() for f in fixes],
         "combined_if_all_fixed": combined,
         "strengths": prose["strengths"],
@@ -226,8 +259,12 @@ async def run(domain: str, *, use_cache: bool = True) -> AsyncIterator[dict[str,
             "strengths": prose["strengths"],
             "generated_by": prose["generated_by"] or "fallback",
             "classified_by": classified_by,
+            "guided_by": guided_by or "fallback",
         },
         "premium": payload["premium"],
         "premium_table": table,
+        "coverage": cover,
+        "scenario": scenario,
+        "scenarios": scenario_list,
         "duration_ms": duration_ms,
     })

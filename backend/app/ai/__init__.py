@@ -8,13 +8,17 @@ is optional at runtime: with no provider key set, every call returns a
 usable result built from static copy.
 """
 
-from . import classify, fallback, report
+from . import classify, fallback, guidance, report
 from .provider import AllProvidersFailed
 from .registry import client_for, describe
-from .schemas import Answer, CompanyProfile, FixCopy, RiskReport
+from .schemas import (
+    Answer, CompanyProfile, CoverageRationale, FixCopy, Guidance,
+    RiskReport, ScenarioCopy,
+)
 
 __all__ = [
-    "classify", "report", "fallback",
+    "classify", "report", "guidance", "fallback",
     "client_for", "describe", "AllProvidersFailed",
     "CompanyProfile", "RiskReport", "FixCopy", "Answer",
+    "CoverageRationale", "ScenarioCopy", "Guidance",
 ]

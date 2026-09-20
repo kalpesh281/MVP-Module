@@ -6,7 +6,9 @@ hand to any visitor. docs/scan-checks.md legal basis
 
 Built on stdlib `ssl` over asyncio rather than sslyze: it is non-blocking
 without a thread pool, and it covers every rule the rubric actually needs.
-sslyze stays in requirements for the deeper Tier 2 cipher analysis.
+sslyze was declared in requirements for weeks and imported nowhere; it was
+removed on 2026-09-20 rather than left implying this file wraps it. If
+cipher-suite enumeration ever earns points at Tier 2, add it back then.
 
 Side effect worth knowing: this check is where the certificate's SAN list
 comes from, and that list is the fallback source of subdomains when crt.sh

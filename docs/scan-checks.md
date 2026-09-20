@@ -25,13 +25,21 @@ Every scan must send a truthful `User-Agent` identifying the service and a conta
 
 ## The five checks
 
+> **Five families, seven scored categories, seven rows in the feed.** Email
+> authentication is one check here but three in the rubric (SPF, DKIM,
+> DMARC scored separately), and breach exposure is one here but two
+> (`creds`, `creds_accounts`). `docs/defending-the-score.md` counts the
+> scored categories; this page groups them by the network call that
+> produces them. Both counts are correct about different things.
+
+
 ### 1. Email authentication — SPF, DKIM, DMARC
 
 | | |
 |---|---|
 | **Weight** | 30 points (DMARC 18, SPF 7, DKIM 5) |
 | **Method** | DNS TXT lookups |
-| **Library** | `checkdmarc` (SPF/DMARC parsing + validation) · `dnspython` (DKIM selector probing) |
+| **Library** | `dnspython` only — `app/scanner/email_auth.py` |
 | **Cost** | Free |
 | **Latency** | < 200 ms |
 
@@ -98,7 +106,7 @@ verifies their own domain by email.
 |---|---|
 | **Weight** | 15 points |
 | **Method** | TLS handshake on port 443 |
-| **Library** | `sslyze` |
+| **Library** | stdlib `ssl` over asyncio — `app/scanner/tls.py` |
 | **Cost** | Free |
 | **Latency** | < 1 s |
 
@@ -208,17 +216,19 @@ Overall scan hard limit: 30 seconds.
 
 | Check | Library | Version | Why this one |
 |---|---|---|---|
-| Email auth | **`checkdmarc`** | 5.17+ | Parses *and validates* SPF and DMARC rather than regexing a TXT record. Counts SPF DNS lookups and void lookups per mechanism — that is how we detect `spf.lookup_overflow` (the >10 lookup limit in RFC 7208) without writing a resolver. Warns when a record is made ineffective by `sp=`, and flags tags removed in RFC 9989. |
-| DNS primitives | **`dnspython`** | 2.7+ | Direct TXT lookups for DKIM selector probing, and async resolution for the subdomain check. `checkdmarc` already depends on it. |
-| TLS | **`sslyze`** | 6.x | Protocol version enumeration, cipher suites, chain validation, in one async scan. Writing this on raw `ssl` + `socket` is possible but you re-implement chain building badly. |
-| HTTP | **`httpx`** | 0.27+ | Async, HTTP/2, redirect control, per-request timeouts. One client, reused. |
-| Cert transparency | **`httpx`** against `crt.sh` | — | No library needed; it returns JSON. Cache aggressively — it is slow and rate-limits. |
-| Public suffix | **`publicsuffixlist`** | — | Distinguishes `co.in` from a real registrable domain. Pulled in by `checkdmarc`. |
+| Email auth | **`dnspython`** | 2.7+ | Async TXT lookups for SPF, DMARC and DKIM selector probing. The SPF lookup counter that produces `spf.lookup_overflow` (the >10 limit in RFC 7208) is ours — `SPF_MAX_LOOKUPS` in `config.py`, counted in `email_auth.py`. |
+| TLS | stdlib **`ssl`** over asyncio | — | An ordinary handshake on 443, non-blocking without a thread pool. It covers every rule the rubric scores: validity, expiry, hostname match, chain, negotiated version. |
+| HTTP | **`httpx`** | 0.27+ | Async, HTTP/2, redirect control, per-request timeouts. One client, reused. Also the transport for the AI providers. |
+| Cert transparency | **`httpx`** against Cert Spotter, then crt.sh | — | No library needed; both return JSON. Source policy in `subdomains.py`: Cert Spotter answers or we fall back and mark the result degraded. |
 
 **Deliberately not used:**
 
 | | Why not |
 |---|---|
+| `checkdmarc` | Declared in `requirements.txt` for the first weeks and imported in zero files — the SPF/DMARC parsing was written by hand against `dnspython` before it was ever wired in. Removed 2026-09-20. It is a good library; it was not the one running. |
+| `sslyze` | Same history, same removal date. `app/scanner/tls.py` is stdlib `ssl` over asyncio. Revisit at Tier 2 if cipher-suite enumeration earns points in the rubric — today it does not, so the dependency bought nothing. |
+| `publicsuffixlist` | Only ever arrived as a `checkdmarc` transitive dependency. The free-mail and suffix handling we need is in `app/domain.py`. |
+| `anthropic` / `openai` SDKs | Also declared, also imported nowhere. Groq and OpenRouter are OpenAI-compatible over plain HTTP, so `app/ai/provider.py` uses `httpx` and the product stays vendor-neutral. Removed 2026-09-20. |
 | `nmap` / `masscan` / `python-nmap` | Active scanning. Prohibited at Tier 0 — see the legal basis above. |
 | `shodan` | Paid, and its data is a stale index rather than a live read. Revisit at Tier 3. |
 | `theHarvester`, `amass`, `subfinder` | Built for offensive recon; many modes are active. CT logs plus certificate SANs give us what we need passively. |

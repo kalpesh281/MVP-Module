@@ -15,6 +15,15 @@ import { createSlice } from '@reduxjs/toolkit';
  */
 const initialState = {
   selected: [],
+  // Which cover amount the reader is looking at. `null` means the
+  // recommended one.
+  //
+  // It lives here rather than in the coverage block's own state because
+  // it changes the headline premium, the rail, and what the fix simulator
+  // prices against. Held locally it would have produced two different
+  // premiums on one screen — the block's, and everything else's — with no
+  // way for the reader to tell which one was theirs.
+  limit: null,
   // Set when the user has ticked and unticked everything back to zero.
   // Gate 1 §1.5: "unticking reverses it exactly". Tracking that we have
   // returned to the baseline lets the UI say so rather than silently
@@ -41,16 +50,22 @@ const simulatorSlice = createSlice({
       state.selected = [];
       state.touched = true;
     },
+    limitChosen(state, action) {
+      state.limit = action.payload;
+    },
     simulatorReset() {
       return initialState;
     },
   },
 });
 
-export const { fixToggled, allFixesSelected, simulatorCleared, simulatorReset } =
+export const {
+  fixToggled, allFixesSelected, simulatorCleared, simulatorReset, limitChosen,
+} =
   simulatorSlice.actions;
 
 export const selectSelectedIds = (state) => state.simulator.selected;
+export const selectLimit = (state) => state.simulator.limit;
 export const selectIsSelected = (id) => (state) =>
   state.simulator.selected.includes(id);
 export const selectHasSelection = (state) => state.simulator.selected.length > 0;

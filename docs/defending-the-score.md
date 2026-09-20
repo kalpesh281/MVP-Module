@@ -10,7 +10,7 @@ The question that decides whether the client trusts the product. Answer it in la
 
 ## Layer 1 — the 20-second answer
 
-> "Five checks, run from outside your domain. Each one has a fixed point value. You start at 100 and lose points for what we find. The letter is just a band on that number.
+> "Seven checks, run from outside your domain. Each one has a fixed point value. You start at 100 and lose points for what we find. The letter is just a band on that number.
 >
 > No AI touches it. Same findings, same score, every time — you can recompute it by hand from the report."
 
@@ -24,15 +24,20 @@ Walk the five steps on their own result page.
 
 **1. Start at 100, deduct.** Absence of a problem is the normal state, so we penalise rather than reward. Same model Mozilla's HTTP Observatory uses.
 
-**2. Five categories, weighted by insurance relevance.**
+**2. Six categories, weighted by insurance relevance.**
 
-| Category | Points |
-|---|---|
-| Email auth (SPF / DKIM / DMARC) | 30 |
-| Attack surface | 23 |
-| Breached credentials | 20 |
-| TLS | 15 |
-| Security headers | 12 |
+| Category | Points | |
+|---|---|---|
+| Attack surface (subdomains) | 23 | |
+| Email auth — DMARC | 18 | |
+| TLS / certificate | 15 | |
+| Security headers | 12 | |
+| Account exposure | 12 | *not scored at Tier 0 — needs domain verification* |
+| Breach history | 8 | |
+| Email auth — SPF | 7 | |
+| Email auth — DKIM | 5 | |
+
+Email authentication is 30 points across its three rows. Account exposure's 12 points leave the denominator on every Tier 0 scan by design, so a live scan is scored out of **88**, not 100.
 
 > "DMARC is 18 points on its own. A missing CSP header is 4. That's not a security-purist ranking — a security tool would weight them closer. **We weight by what shows up in a claim file.** Business email compromise is one of the most frequent and expensive cyber claims. A missing CSP header rarely is."
 
@@ -68,7 +73,7 @@ Then close with the part that matters:
 
 ### "Can the AI change the score?"
 
-> "No. It's architecturally prevented — the scoring module isn't allowed to import the AI module, and that's enforced in code review. The AI writes the explanations. It never produces a number that appears on this page."
+> "No. It's architecturally prevented — the scoring module isn't allowed to import the AI module, and that's enforced by a test that scans every import line in the scoring package. The AI writes the explanations. It never produces a number that appears on this page."
 
 ### "What if the score is wrong?"
 

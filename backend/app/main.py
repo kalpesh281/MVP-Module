@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 
 from . import ai, db, methodology, orchestrator, store
 from .config import (
+    AI_CHAINS,
     RATE_VERSION,
     RATE_LIMIT_PER_IP,
     RATE_LIMIT_WINDOW_S,
@@ -92,9 +93,12 @@ async def health():
         "ok": True,
         "rubric_version": RUBRIC_VERSION,
         "database": "connected" if db.available() else "unavailable",
-        "ai": {call: (client is not None)
-               for call in ("classify", "report", "qa")
-               for client in (ai.client_for(call),)},
+        # Derived from AI_CHAINS rather than listed here, so a new call
+        # is reported the moment it exists. The list used to be typed out,
+        # and `guidance` was missing from it for the whole of its first
+        # day: the health endpoint said the AI layer was fine while one of
+        # its four calls went unreported.
+        "ai": {call: (ai.client_for(call) is not None) for call in AI_CHAINS},
     }
 
 

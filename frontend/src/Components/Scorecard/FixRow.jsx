@@ -20,7 +20,14 @@ export default function FixRow({ fix }) {
   const detailsId = `fix-${fix.id}-details`;
 
   return (
-    <li className="border-b border-line transition-colors last:border-b-0 hover:bg-raised/40">
+    // The anchor the claim scenario scrolls to. Deliberately not
+    // `fix-${id}` — that is already the checkbox's own id, and two
+    // elements sharing it silently breaks the label-to-input association
+    // that makes the whole row clickable.
+    <li
+      id={`fix-row-${fix.id}`}
+      className="scroll-mt-24 border-b border-line transition-colors last:border-b-0 hover:bg-raised/40"
+    >
       <div className="flex items-start gap-3 p-4">
         <input
           id={inputId}

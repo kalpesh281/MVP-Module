@@ -58,6 +58,23 @@ Calls have very different difficulty. Cost-sensitive calls may use a cheaper or 
 
 One interface. Provider chosen per call site. No framework.
 
+> **What actually shipped (checked 2026-09-20).** The interface below is
+> the design; the code took the same shape with different files. There is
+> no `anthropic_provider.py` and no `openai_provider.py`, and neither the
+> `anthropic` nor the `openai` SDK is installed — both were declared in
+> `requirements.txt` for weeks, imported nowhere, and removed.
+>
+> | In this doc | On disk |
+> |---|---|
+> | `app/ai/anthropic_provider.py`, `app/ai/openai_provider.py` | `app/ai/provider.py` — one `httpx` client speaking the OpenAI-compatible Chat Completions shape |
+> | per-call-site provider choice | `app/ai/registry.py` + `AI_CHAINS` in `config.py` — an ordered fallback chain per call |
+> | 3 calls (classify / report / Q&A) | 4: `classify`, `report`, `guidance` (the coverage rationale and the claim narrative, issued as one request), `qa` |
+> | Claude Opus 5 recommended for call 2 | Groq `openai/gpt-oss-120b` has served **100%** of real scans. OpenRouter is configured as fallback and has never served one. |
+>
+> The boundary in section 1 is unchanged and is enforced by
+> `test_scoring_never_imports_ai`. The code snippets below stay because
+> they document the intended shape, not because they are what runs.
+
 ```python
 # app/ai/provider.py
 from typing import Protocol, TypeVar

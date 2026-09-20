@@ -1,21 +1,34 @@
+# Every line here is imported somewhere in app/ or tests/.
+#
+# Four packages were removed on 2026-09-20 after a check found them
+# declared but imported in zero files: checkdmarc, sslyze, anthropic and
+# openai. The first two were planned and then written by hand against
+# dnspython and stdlib `ssl`, which is what app/scanner actually uses. The
+# last two are unnecessary because the AI layer speaks to Groq and
+# OpenRouter over their OpenAI-compatible HTTP APIs with httpx directly —
+# app/ai/provider.py — so no vendor SDK is involved.
+#
+# Declared-but-unused dependencies are not free: they are installed, they
+# are scanned for CVEs, and they imply to a reader that the scanner is a
+# thin wrapper around someone else's library when it is not.
+
 # --- web ---
 fastapi>=0.115
-uvicorn[standard]>=0.32
+uvicorn[standard]>=0.32   # the server; not imported, invoked
 pydantic>=2.9
 python-dotenv>=1.0
 
 # --- scanning ---
-checkdmarc>=5.17          # SPF + DMARC parsing and validation (pulls dnspython, publicsuffixlist)
-dnspython>=2.7            # DKIM selector probing, async resolution
-sslyze>=6.0               # TLS protocol enumeration, chain validation
-httpx>=0.27               # async HTTP: headers check, crt.sh
+dnspython>=2.7            # SPF, DKIM selector probing, DMARC, async resolution
+httpx>=0.27               # async HTTP: headers, Cert Spotter, crt.sh, AI providers
+#                           TLS is stdlib `ssl` — no third-party package
 
 # --- data ---
 pymongo>=4.9              # AsyncMongoClient — NOT motor
 
-# --- AI: install at least one ---
-anthropic>=1.0
-openai>=1.60
+# --- AI ---
+# No SDK. Groq and OpenRouter are called over their OpenAI-compatible
+# HTTP APIs with httpx. The product runs with no provider key set.
 
 # --- dev ---
 pytest>=8.0

@@ -55,11 +55,18 @@ export function pointsToNextGrade(score) {
  * for the all-ticked case. So: use the exact number when everything is
  * ticked, and the sum in between.
  */
-export function simulate(result, selectedIds) {
+export function simulate(result, selectedIds, limit = null) {
+  const option = optionFor(result, limit);
   const base = {
     score: result.score ?? 0,
     grade: result.grade ?? null,
-    premium: result.premium ?? null,
+    // At the recommended limit this is the headline premium. At any other
+    // rung it is that rung's price for the grade they have now, so the
+    // saving below compares like with like.
+    premium: option
+      ? lookup(option.by_grade, result.grade) ?? result.premium ?? null
+      : result.premium ?? null,
+    limit: option?.limit ?? result.premium?.limit ?? null,
     saving: 0,
     selected: 0,
     effortHours: 0,
@@ -86,19 +93,44 @@ export function simulate(result, selectedIds) {
   score = Math.max(0, Math.min(100, Math.round(score)));
   const grade = gradeFor(score);
 
-  const premium = premiumForGrade(result, grade);
+  const premium = premiumForGrade(result, grade, limit);
   return {
     score,
     grade,
     premium,
+    limit: base.limit,
     saving: savingBetween(base.premium, premium),
     selected: chosen.length,
     effortHours: chosen.reduce((total, fix) => total + effortHours(fix.effort), 0),
   };
 }
 
+/**
+ * The cover option the reader has selected, or the recommended one.
+ *
+ * Returns undefined when Stage 2's coverage block is absent — a cached
+ * scan stored before it shipped, for instance — and every caller falls
+ * back to `premium_table`, which has been in the payload since Stage 1.
+ */
+export function optionFor(result, limit = null) {
+  const options = result.coverage?.options;
+  if (!options?.length) return undefined;
+  if (limit == null) return options.find((o) => o.recommended) ?? options[0];
+  return options.find((o) => o.limit === limit) ?? options.find((o) => o.recommended);
+}
+
+function lookup(table, grade) {
+  if (!table || !grade) return null;
+  const row = table[grade];
+  // F is null on purpose: referred to a human, not priced.
+  if (!row) return { low: null, high: null, referred: true };
+  return { ...row, referred: false };
+}
+
 /** Look up — never compute. `premium_table` ships in the result payload. */
-export function premiumForGrade(result, grade) {
+export function premiumForGrade(result, grade, limit = null) {
+  const option = optionFor(result, limit);
+  if (option) return lookup(option.by_grade, grade) ?? result.premium ?? null;
   const table = result.premium_table?.by_grade;
   if (!table || !grade) return result.premium ?? null;
   const row = table[grade];

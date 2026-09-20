@@ -21,6 +21,40 @@ export function rupeeRange(premium) {
   return `${rupees(premium.low)} – ${rupees(premium.high)}`;
 }
 
+/**
+ * Lakhs and crores: "₹15 L", "₹1.2 Cr".
+ *
+ * For the claim scenario's cost table only. A premium is a figure someone
+ * will check against a quote, so it is printed in full — but a table of
+ * six ₹15,00,000s is a wall of digits nobody reads, and the reader thinks
+ * in these units anyway. Mirrors `fallback._rupees` in the backend.
+ */
+export function rupeesCompact(amount) {
+  const [value, unit] = compactParts(amount);
+  return value == null ? '—' : `₹${value} ${unit}`;
+}
+
+/** [value, unit] so a range can share one suffix. */
+function compactParts(amount) {
+  if (amount == null) return [null, ''];
+  if (amount >= 10000000) {
+    const crore = amount / 10000000;
+    return [Number.isInteger(crore) ? crore : Number(crore.toFixed(1)), 'Cr'];
+  }
+  return [Math.round(amount / 100000), 'L'];
+}
+
+/** "₹15 – 40 L" when both ends share a unit, "₹80 L – ₹1.2 Cr" when they
+ *  do not. Repeating the suffix on both ends of a range reads as two
+ *  separate numbers rather than one span. */
+export function rupeeRangeCompact(range) {
+  if (!range || range.low == null || range.high == null) return '—';
+  const [low, lowUnit] = compactParts(range.low);
+  const [high, highUnit] = compactParts(range.high);
+  if (lowUnit === highUnit) return `₹${low} – ${high} ${lowUnit}`;
+  return `₹${low} ${lowUnit} – ₹${high} ${highUnit}`;
+}
+
 /** "3 hours ago" for a cached scan. A cached result must always be
  *  labelled with its age — presenting stale findings as live would be the
  *  one dishonest thing on the page. docs/database.md section 5 */

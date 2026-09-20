@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
-import { selectSelectedIds } from '../../Features/simulatorSlice';
+import { selectLimit, selectSelectedIds } from '../../Features/simulatorSlice';
 import { simulate } from '../../utils/simulate';
 import { fadeUp, stagger, EASE } from '../../utils/motion';
 
@@ -16,6 +16,7 @@ import Strengths from './Strengths';
 import ProfileCard from './ProfileCard';
 import CachedNotice from './CachedNotice';
 import CtaCard from './CtaCard';
+import ScenarioBlock from './ScenarioBlock';
 import ReportNav from './ReportNav';
 import ResultRail from './ResultRail';
 
@@ -55,8 +56,12 @@ export default function Scorecard({
   domain,
 }) {
   const selectedIds = useSelector(selectSelectedIds);
+  const chosenLimit = useSelector(selectLimit);
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const simulated = useMemo(() => simulate(result, selectedSet), [result, selectedSet]);
+  const simulated = useMemo(
+    () => simulate(result, selectedSet, chosenLimit),
+    [result, selectedSet, chosenLimit],
+  );
   const changed = simulated.selected > 0;
   const reduced = useReducedMotion();
 
@@ -77,6 +82,14 @@ export default function Scorecard({
       block: 'start',
     });
   }, [step, reduced]);
+
+  // The scenario block points back at the fix that clears it. Both are on
+  // this step, so this is a scroll rather than a step change.
+  const scrollToFix = (fixId) => {
+    const target = document.getElementById(`fix-row-${fixId}`);
+    if (!target) return;
+    target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+  };
 
   const steps = [
     {
@@ -126,9 +139,13 @@ export default function Scorecard({
               baseline={result.premium}
               saving={simulated.saving}
               bandLabel={result.premium_table?.revenue_band_label}
-              coverLabel={result.premium_table?.limit_label}
+              coverLabel={
+                result.coverage?.options?.find((o) => o.limit === simulated.limit)
+                  ?.limit_label ?? result.premium_table?.limit_label
+              }
               rateVersion={result.rate_version}
               grade={simulated.grade}
+              coverage={result.coverage}
             />
           </motion.div>
         </>
@@ -142,6 +159,15 @@ export default function Scorecard({
           <motion.div variants={fadeUp}>
             <FixList fixes={result.fixes || []} simulated={simulated} />
           </motion.div>
+          {/* After the fix list, never before it: the reader has to know
+              what DMARC is before being told what it costs. */}
+          <ScenarioBlock
+            scenario={result.scenario}
+            scenarios={result.scenarios}
+            selectedIds={selectedSet}
+            fixes={result.fixes || []}
+            onJumpToFix={scrollToFix}
+          />
           <motion.div variants={fadeUp}>
             <Strengths items={result.strengths} />
           </motion.div>

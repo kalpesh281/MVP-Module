@@ -35,7 +35,7 @@ These have no network and no model. They must be green before anything else is t
 
 | File | Asserts | Must include |
 |---|---|---|
-| `test_rubric.py` | Every rule ID maps to its exact point value | All 5 categories; weights sum to 100 |
+| `test_rubric.py` | Every rule ID maps to its exact point value | All 8 check categories; weights sum to 100 |
 | `test_grades.py` | Band boundaries | **84→B, 85→A, 69→C, 70→B, 54→D, 55→C, 39→F, 40→D** |
 | `test_rescale.py` | Inconclusive handling | One check inconclusive → rescale formula; >25 points inconclusive → grade suppressed |
 | `test_pricing.py` | Premium lookup | Every grade × revenue band × limit multiplier |
@@ -114,12 +114,15 @@ Run on a real domain, then on `example.com`, then on a domain you know is clean.
 - [ ] 320 px wide — no horizontal scroll, on every screen
 - [ ] `prefers-reduced-motion: reduce` → no animation, values jump
 - [ ] Tab through the whole page — focus visible everywhere, fix checkboxes operable by keyboard
-- [ ] Dark mode renders (no white-on-white, no black-on-black)
+- [x] ~~Dark mode renders~~ — **N/A.** One theme, deliberately: a light/dark pair means two sets of contrast decisions and this product has one. See the note at the top of `frontend/src/index.css`.
 - [ ] Nothing is asked of the user before the result — no email, no modal, no signup
 
 ## 1.6 Manual — data and safety
 
-- [ ] `git grep -i "mongodb+srv"` returns **nothing** outside `.env.example` (placeholder only)
+- [ ] `git grep -iE "mongodb\+srv://[^<]"` returns **nothing** — the only
+      matches anywhere are `<user>:<password>` templates in `.env.example`
+      and `docs/database.md`. Matching the bare scheme flags those templates
+      and this checklist line itself, which reads as a leak and is not one.
 - [ ] Trigger a DB error deliberately → the connection string does **not** appear in the response or the logs
 - [ ] A stored scan document contains `rubric_version` and `rate_version`
 - [ ] Re-running `score()` on a stored document's `findings` reproduces its stored grade
@@ -150,7 +153,7 @@ Everything in [delivery-stages.md § Stage 2](delivery-stages.md#stage-2--covera
 | Override | When a contract requirement exists it **always wins**, even against a higher inferred limit |
 | Breach bands | Size band × data-type multiplier → expected cost range (health ×2.0, card ×1.6, consumer PII >100k ×1.5) |
 | Never over-recommend | Recommendation is never above what the breach cost band justifies |
-| All limits priced | Payload ships premiums for ₹1 Cr / ₹5 Cr / ₹10 Cr in a single response |
+| All limits priced | Payload ships premiums for all three offered rungs in a single response, plus `by_grade` for each, so the limit selector and the fix simulator can never show two different prices |
 | No AI dependency | Module A output is identical with the AI layer mocked to raise |
 
 ## 2.2 Automated — Module B, claim scenario
@@ -180,7 +183,7 @@ In insurance, a model inventing a coverage statement is the single mistake you g
 
 ## 2.4 Manual — frontend
 
-- [ ] Switching ₹1 Cr / ₹5 Cr / ₹10 Cr re-prices **instantly**, Network tab shows zero requests
+- [ ] Switching between the three offered rungs re-prices **instantly**, Network tab shows zero requests. (The rungs are not fixed — they are the recommended limit plus one step down and one step up, so they move with the company.)
 - [ ] Dropping to a limit below the recommendation surfaces a visible gap warning
 - [ ] The scenario block links back to the matching fix in the fix list
 - [ ] Every rupee figure on screen carries "typically" or "estimated"
@@ -190,9 +193,20 @@ In insurance, a model inventing a coverage statement is the single mistake you g
 
 ## 2.5 Manual — domain accuracy
 
-- [ ] Sublimit and endorsement language checked against **at least one real Indian cyber policy wording** — ask any broker for a specimen
-- [ ] Social engineering / funds transfer fraud distinction is stated correctly
-- [ ] No sentence claims something is covered without the qualifier the wording actually uses
+Full audit trail: **[policy-wording-evidence.md](policy-wording-evidence.md)**.
+
+- [x] Sublimit and endorsement language checked against **at least one real Indian cyber policy wording** — 2026-09-20, against Bajaj Cyber Protect Premium, UIN `IRDAN113CP0002V02201516`, a filed commercial wording. Seven of its eleven insuring clauses carry their own sublimit, which is the premise of Module B.
+- [x] Social engineering / funds transfer fraud distinction is stated correctly — **it was not.** The wording contains no social engineering cover at all ("social engineering", "funds transfer" and "phishing" appear zero times in 28 pages), and its IT-Theft definition requires a "targeted intrusion … deletion or alteration of Data", which a tricked employee does not satisfy. Our text warned about a *sublimit* on a cover that is absent. Corrected.
+- [x] No sentence claims something is covered without the qualifier the wording actually uses — **one did.** We referred to "the policy's defined reputational harm cover"; no such cover exists, and the word "reputation" does not appear in the wording. Corrected, and `test_nothing_is_listed_as_covered_and_excluded_at_once` now fails the build if a scenario lists an item as covered and excluded at once.
+- [ ] **A second commercial wording.** One insurer is not "a standard Indian wording". Our text generalises and that claim is still owed a second source.
+- [ ] **A filled-in specimen schedule.** Every sublimit that matters is an Item number, not a figure. We know which clauses are capped; we do not know at what.
+- [ ] **A broker has read this.** The audit was done from the document, not by anyone who places these policies.
+
+> Gate 2 stays **red** until the three unticked boxes above are closed. The
+> corrections are real progress and the catalog is defensible where it was
+> previously unverified — but "checked against one wording, by us" is not
+> the same claim as "correct for the Indian market", and the client demo
+> must not blur them.
 
 ## GATE 2 sign-off
 

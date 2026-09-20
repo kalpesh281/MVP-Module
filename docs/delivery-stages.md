@@ -255,7 +255,7 @@ Full roadmap: [vision.md](vision.md).
 # Standing rules across all stages
 
 1. **AI explains. It never scores and never prices.** Every stage must work with the AI layer entirely offline.
-2. **`scoring/` never imports from `ai/`.** Enforce in review.
+2. **`scoring/` never imports from `ai/`.** Enforced by `test_scoring_never_imports_ai`.
 3. **Never ask before giving.** Nothing is requested from the user before the result is shown.
 4. **Passive scanning only.** No probing infrastructure we don't own.
 5. **Every number is versioned.** `rubric_version` and `rate_version` on every stored scan.

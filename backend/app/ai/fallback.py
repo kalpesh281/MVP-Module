@@ -159,3 +159,105 @@ def copy_for(fix_id: str) -> tuple[str, str]:
     """(why_it_matters, how_to_fix). Never raises — a fix with no entry
     still renders, it just says less."""
     return COPY.get(fix_id, ("", ""))
+
+
+# --- Stage 2: coverage guidance ------------------------------------------
+#
+# One template per driver. These are not placeholders waiting for a model —
+# they are what a reader sees whenever the AI layer is unavailable, so they
+# have to stand on their own. Each names the specific reason the limit was
+# chosen, because "we recommend ₹5 Cr" with no reason attached is the
+# failure mode this whole module exists to avoid.
+_RATIONALE: dict[str, str] = {
+    "contract": (
+        "This is not our recommendation — it is what your customer contract "
+        "already requires you to carry."
+    ),
+    "sensitive_data": (
+        "You handle health or payment card data, which is the most expensive "
+        "category to lose and the one regulators respond to fastest."
+    ),
+    "financial_data": (
+        "You handle financial and transactional data, so an incident reaches "
+        "your customers' money, not just their records."
+    ),
+    "pii_at_scale": (
+        "You hold personal data at a scale where the DPDP Act applies and "
+        "notification alone is a significant cost."
+    ),
+    "pii": (
+        "You hold customer personal data, so the DPDP Act applies to you and a "
+        "breach carries a notification obligation."
+    ),
+    "headcount": (
+        "At your headcount, an outage stops enough people working that business "
+        "interruption becomes the largest line in the claim."
+    ),
+    "baseline": (
+        "You handle no sensitive data we can see from outside, so this is a "
+        "floor rather than a needs analysis."
+    ),
+}
+
+_NARRATIVE: dict[str, str] = {
+    "email_spoof": (
+        "Someone registers a lookalike domain or sends mail that passes as yours, "
+        "and asks a customer or your own finance team to change bank details. "
+        "The message arrives from an address that looks correct because nothing "
+        "in your DNS tells the receiving server to reject it."
+    ),
+    "account_takeover": (
+        "A password exposed in someone else's breach is reused on one of your "
+        "accounts, and the first sign is activity that looks legitimate because "
+        "it is authenticated. What follows is a data question, not a hacking one."
+    ),
+    "ransomware": (
+        "An internet-reachable server that was never meant to be public is found "
+        "by a scanner that is not ours, and used as the way in. Recovery is "
+        "rarely the expensive part; the days you cannot trade are."
+    ),
+    "web_compromise": (
+        "Code you did not write runs on a page your customers trust, because "
+        "nothing on your site limits what is allowed to load. The people harmed "
+        "are your customers, which is what turns it into a liability claim."
+    ),
+}
+
+
+def _rupees(amount: int) -> str:
+    """₹40 L / ₹1.2 Cr. Indian units, because the reader thinks in them."""
+    if amount >= 10_000_000:
+        crore = amount / 10_000_000
+        return f"₹{crore:.0f} Cr" if crore == int(crore) else f"₹{crore:.1f} Cr"
+    return f"₹{amount // 100_000} L"
+
+
+def coverage_rationale(
+    driver: str,
+    limit_label: str,
+    band: dict[str, int],
+    clause: str | None = None,
+) -> dict[str, str]:
+    """Module A's copy with no model involved."""
+    reason = _RATIONALE.get(driver, _RATIONALE["baseline"])
+    if driver == "contract" and clause:
+        reason = (
+            f"Clause {clause} of your customer contract requires this limit. "
+            "It is an obligation, not advice."
+        )
+    return {
+        "headline": f"Recommended: {limit_label}",
+        "reasoning": (
+            f"{reason} An incident at your size typically costs "
+            f"{_rupees(band['low'])}–{_rupees(band['high'])} once notification, "
+            "forensics, legal and regulatory response are counted."
+        ),
+        "downside": (
+            "A lower limit leaves the balance with you, and the shortfall is "
+            "payable at the worst possible moment."
+        ),
+    }
+
+
+def scenario_narrative(scenario_id: str | None) -> str:
+    return _NARRATIVE.get(scenario_id or "", "")
