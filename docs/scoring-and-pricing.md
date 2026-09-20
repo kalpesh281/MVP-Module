@@ -1,0 +1,280 @@
+# Scoring and Pricing
+
+**Rubric version:** `v1.0`
+**Rate card version:** `v1.0`
+
+---
+
+## Principle
+
+> **AI explains. It never scores and never prices.**
+
+The score and the premium are produced by the deterministic rules in this document. They must be reproducible from the raw findings plus a version string, with no model in the loop.
+
+Three reasons this is non-negotiable:
+
+1. **Defensibility.** An insurer will not grant delegated underwriting authority to a black box. Every number we show must be traceable to a rule.
+2. **Disputes.** When a customer says "that finding is wrong," we must show the rule, the evidence, and the points.
+3. **Consistency.** The same domain scanned twice must produce the same score. A language model does not guarantee that.
+
+Claude receives the computed score and deltas **as input** and writes the explanation around them. It never generates a number that reaches the user.
+
+---
+
+## 1. Score
+
+Start at **100**. Apply deductions. Floor at 0.
+
+### Weight allocation
+
+| Category | Max deduction |
+|---|---|
+| Email authentication | 30 |
+| Breached credentials | 20 |
+| TLS and certificate | 15 |
+| Security headers | 12 |
+| Attack surface | 23 |
+| **Total** | **100** |
+
+### 1.1 Email authentication — 30 points
+
+**DMARC — 18**
+
+| Condition | Rule ID | Deduction |
+|---|---|---|
+| `p=reject` with `rua` reporting | `dmarc.enforcing` | 0 |
+| `p=reject`, no `rua` | `dmarc.reject_no_reporting` | 3 |
+| `p=quarantine` | `dmarc.quarantine` | 8 |
+| `p=none` | `dmarc.monitor_only` | 13 |
+| No DMARC record | `dmarc.absent` | 18 |
+
+**SPF — 7**
+
+| Condition | Rule ID | Deduction |
+|---|---|---|
+| Valid, ends `-all` | `spf.strict` | 0 |
+| Valid, ends `~all` | `spf.softfail` | 3 |
+| Ends `?all` or `+all` | `spf.permissive` | 6 |
+| No SPF record | `spf.absent` | 7 |
+| More than 10 DNS lookups (invalid per RFC) | `spf.lookup_overflow` | 4 |
+
+**DKIM — 5**
+
+| Condition | Rule ID | Deduction |
+|---|---|---|
+| Record found at a probed selector | `dkim.present` | 0 |
+| No record at any probed selector | `dkim.not_found` | 5 |
+
+`dkim.not_found` is reported as a **warning**, never a failure — a custom selector may exist that we cannot enumerate.
+
+### 1.2 Breached credentials — 20 points
+
+| Accounts found | Rule ID | Deduction |
+|---|---|---|
+| 0 | `creds.clean` | 0 |
+| 1–5 | `creds.low` | 6 |
+| 6–20 | `creds.medium` | 10 |
+| 21–100 | `creds.high` | 15 |
+| 100+ | `creds.severe` | 20 |
+
+### 1.3 TLS and certificate — 15 points
+
+Deductions accumulate, capped at 15.
+
+| Condition | Rule ID | Deduction |
+|---|---|---|
+| Expired, invalid chain, or hostname mismatch | `tls.invalid` | 15 |
+| Self-signed | `tls.self_signed` | 12 |
+| TLS 1.0 or 1.1 accepted | `tls.legacy_protocol` | 8 |
+| Certificate expires within 14 days | `tls.expiring_urgent` | 6 |
+| Certificate expires within 30 days | `tls.expiring_soon` | 3 |
+| No HTTPS redirect from HTTP | `tls.no_redirect` | 4 |
+
+### 1.4 Security headers — 12 points
+
+| Missing header | Rule ID | Deduction |
+|---|---|---|
+| `Strict-Transport-Security` | `hdr.no_hsts` | 5 |
+| `Content-Security-Policy` | `hdr.no_csp` | 4 |
+| `X-Frame-Options` or CSP `frame-ancestors` | `hdr.no_framing_protection` | 2 |
+| `X-Content-Type-Options: nosniff` | `hdr.no_nosniff` | 1 |
+
+### 1.5 Attack surface — 23 points
+
+Deductions accumulate, capped at 23.
+
+| Condition | Rule ID | Deduction |
+|---|---|---|
+| Live host matching a risk pattern (`staging`, `admin`, `jenkins`, …) reachable, per host | `surface.risk_host` | 6 |
+| Directory listing enabled on any host | `surface.directory_listing` | 7 |
+| Host serving HTTP only, no TLS | `surface.plaintext_host` | 4 |
+| More than 50 live subdomains | `surface.sprawl` | 3 |
+
+Full risk-pattern list: [scan-checks.md](scan-checks.md#5-attack-surface--subdomains).
+
+---
+
+## 2. Grade
+
+| Grade | Score |
+|---|---|
+| **A** | 85 – 100 |
+| **B** | 70 – 84 |
+| **C** | 55 – 69 |
+| **D** | 40 – 54 |
+| **F** | 0 – 39 |
+
+The **grade** is what the page leads with. The numeric score is internal — shown on hover and in exports only.
+
+Rationale: SecurityScorecard uses an A–F scale specifically so non-security stakeholders can discuss a result. A bare "58/100" reads as a failed exam and makes founders defensive.
+
+---
+
+## 3. Inconclusive checks
+
+A check that times out or errors is `inconclusive`. It is **excluded from both the numerator and the denominator** — its points are removed from the 100-point total and the score is rescaled.
+
+```
+score = 100 × (available_points − deductions) / available_points
+```
+
+**Never grade a company well because a check failed to run.**
+
+If checks totalling **more than 25 points** are inconclusive, suppress the grade entirely and show a partial report explaining which checks could not complete.
+
+---
+
+## 4. Premium
+
+### 4.1 Base table — PLACEHOLDER
+
+Annual premium in INR, for a **₹5 Cr** limit. **These figures are not insurer-validated.** They must be calibrated with a partner insurer before being presented as anything other than an estimate. Every surface that displays them must use the word "estimated".
+
+**Revenue under ₹5 Cr**
+
+| Grade | Low | High |
+|---|---|---|
+| A | 45,000 | 60,000 |
+| B | 60,000 | 85,000 |
+| C | 85,000 | 1,20,000 |
+| D | 1,30,000 | 1,80,000 |
+| F | Refer — likely declined | |
+
+**Revenue ₹5 – 25 Cr**
+
+| Grade | Low | High |
+|---|---|---|
+| A | 70,000 | 95,000 |
+| B | 95,000 | 1,30,000 |
+| C | 1,40,000 | 1,90,000 |
+| D | 2,00,000 | 2,80,000 |
+| F | Refer | |
+
+**Revenue ₹25 – 100 Cr**
+
+| Grade | Low | High |
+|---|---|---|
+| A | 1,20,000 | 1,60,000 |
+| B | 1,60,000 | 2,20,000 |
+| C | 2,30,000 | 3,20,000 |
+| D | 3,40,000 | 4,50,000 |
+| F | Refer | |
+
+### 4.2 Revenue band at Tier 0
+
+Tier 0 does not know revenue. Use the size band inferred by AI call 1 as a proxy:
+
+| Inferred headcount | Revenue band used |
+|---|---|
+| 1–10 | Under ₹5 Cr |
+| 11–50 | Under ₹5 Cr |
+| 51–200 | ₹5 – 25 Cr |
+| 200+ | ₹25 – 100 Cr |
+
+This is the primary source of Tier 0's ±60% imprecision, and it is exactly what the Tier 1 CTA resolves.
+
+### 4.3 Limit multipliers
+
+| Limit | Multiplier |
+|---|---|
+| ₹1 Cr | 0.45 |
+| ₹2 Cr | 0.65 |
+| **₹5 Cr** | **1.00** (Tier 0 default) |
+| ₹10 Cr | 1.55 |
+| ₹25 Cr | 2.60 |
+
+### 4.4 Data-type multipliers — Tier 1+ only
+
+Apply the **single highest** applicable multiplier. Do not compound.
+
+| Data handled | Multiplier |
+|---|---|
+| Health data (PHI) | 1.40 |
+| Payment card data | 1.30 |
+| Consumer PII, > 100k records | 1.25 |
+| B2B only, no sensitive data | 1.00 |
+
+Not applied at Tier 0 — inferred data types are not reliable enough to price on.
+
+---
+
+## 5. Premium impact of a fix
+
+**Computed, not generated.** Never ask the model for a percentage.
+
+```
+For each fix:
+  hypothetical_score = current_score + fix.score_delta
+  hypothetical_grade = grade_for(hypothetical_score)
+  premium_if_fixed   = premium_for(hypothetical_grade, revenue_band, limit)
+
+For the combined row:
+  combined_score  = current_score + Σ(selected fixes' score_delta)
+  combined_grade  = grade_for(combined_score)
+  annual_saving   = midpoint(current_premium) − midpoint(combined_premium)
+```
+
+All deltas are precomputed server-side and returned in the `result` payload, so the interactive fix simulator needs **no network call**.
+
+---
+
+## 6. Worked example
+
+`yourco.com`
+
+| Finding | Rule | Deduction |
+|---|---|---|
+| No DMARC record | `dmarc.absent` | 18 |
+| SPF ends `~all` | `spf.softfail` | 3 |
+| DKIM found at selector `google` | `dkim.present` | 0 |
+| 14 breached accounts | `creds.medium` | 10 |
+| Certificate valid, 240 days remaining | — | 0 |
+| No HSTS | `hdr.no_hsts` | 5 |
+| No CSP | `hdr.no_csp` | 4 |
+| `staging.yourco.com` live, returns 200 | `surface.risk_host` | 6 |
+| | **Total** | **46** |
+
+**Score 54 → Grade D.** Hmm — this sits one point below C. That is the rubric working correctly; do not tune the example to flatter the demo. Tune the rubric only with evidence.
+
+Projected outcomes:
+
+| Action | Score | Grade | Estimated premium (₹5 Cr limit, revenue < ₹5 Cr) |
+|---|---|---|---|
+| Today | 54 | D | ₹1,30,000 – 1,80,000 |
+| Fix DMARC | 72 | B | ₹60,000 – 85,000 |
+| Fix DMARC + credentials | 82 | B | ₹60,000 – 85,000 |
+| Fix all three | 88 | A | ₹45,000 – 60,000 |
+| | | | **saving ≈ ₹1,02,500** |
+
+Note the shape this produces: a single fix (DMARC, 2 hours of work) moves the company two grades. That is the product's core message, and it falls out of the rubric rather than being staged.
+
+> The mockup in [tier-0-scorecard-spec.md](tier-0-scorecard-spec.md#43-result) is illustrative. **This document is authoritative** for all numbers.
+
+---
+
+## 7. Versioning and calibration
+
+- `rubric_version` and `rate_version` are stored on every scan row. Never mutate a rubric in place; publish `v1.1` and leave `v1.0` intact.
+- A score must be reproducible from `findings` + `rubric_version` alone.
+- Weights in §1 are **judgment-based priors**, not empirically derived. They encode the view that email-authentication failure and credential exposure are the highest-signal predictors of a claim. Recalibrate against real loss data once Phase 4 placements begin.
+- Premium tables in §4 are placeholders and must be replaced with partner-insurer rates before any Tier 7 quote.

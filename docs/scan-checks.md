@@ -1,0 +1,216 @@
+# Scan Checks — Tier 0
+
+Five checks. All **passive**. All free or near-free.
+
+---
+
+## Legal basis
+
+**Tier 0 performs passive reconnaissance only.** Every check below either (a) queries public infrastructure records (DNS, certificate transparency), (b) makes an ordinary HTTPS request to a public web server, or (c) queries a third-party index the target does not control.
+
+**Explicitly prohibited in Tier 0:**
+
+- Port scanning (`nmap`, `masscan`) against a domain we do not own
+- Vulnerability probing, fuzzing, or exploit attempts
+- Credential testing of any kind
+- Authenticated or rate-abusive crawling
+
+Active scanning of infrastructure without written authorisation carries exposure under the Information Technology Act, 2000 (India) — notably §43 and §66 — and will get our source addresses blocked. Active checks become available only at Tier 3+, under an explicit authorisation the customer grants when connecting an account.
+
+Every scan must send a truthful `User-Agent` identifying the service and a contact URL.
+
+---
+
+> **Weights here are a summary. [scoring-and-pricing.md](scoring-and-pricing.md) is authoritative.** If the two ever disagree, that document wins and this one is wrong. They must sum to 100.
+
+## The five checks
+
+### 1. Email authentication — SPF, DKIM, DMARC
+
+| | |
+|---|---|
+| **Weight** | 30 points (DMARC 18, SPF 7, DKIM 5) |
+| **Method** | DNS TXT lookups |
+| **Library** | `checkdmarc` (SPF/DMARC parsing + validation) · `dnspython` (DKIM selector probing) |
+| **Cost** | Free |
+| **Latency** | < 200 ms |
+
+**Lookups**
+
+- SPF: `TXT` at apex, record starting `v=spf1`
+- DMARC: `TXT` at `_dmarc.<domain>`, record starting `v=DMARC1`
+- DKIM: `TXT` at `<selector>._domainkey.<domain>` — probe common selectors: `google`, `selector1`, `selector2`, `k1`, `s1`, `default`, `mail`, `dkim`, `zoho`, `mandrill`
+
+**Why DMARC carries the highest weight:** absence of an enforcing DMARC policy means anyone can send email that appears to come from the domain. This is the entry point for business email compromise, which is among the most common and most expensive cyber insurance claim types. It is also the single most recognisable signal to an underwriter, and most Indian SaaS companies fail it. It is our highest-signal finding.
+
+**Note on DKIM:** absence of a record at common selectors is not proof of absence — a custom selector may exist. Grade DKIM as `warn`, never `fail`, and weight it lightly.
+
+---
+
+### 2. Breached credentials
+
+| | |
+|---|---|
+| **Weight** | 20 points |
+| **Method** | Have I Been Pwned API v3, domain search |
+| **Cost** | ~₹350 / month |
+| **Latency** | 1–2 s |
+
+Returns breached accounts on the domain. Requires the `hibp-api-key` header.
+
+**Important:** the HIBP domain-search endpoint requires **domain ownership verification**. For Tier 0 (scanning domains we do not control) use the breach-by-domain metadata endpoints available without verification, and reserve verified per-account enumeration for Tier 2+ once the user has confirmed their own domain by email.
+
+Document precisely which endpoint the implementation uses and what it can and cannot see. Do not display a count we cannot substantiate.
+
+---
+
+### 3. TLS and certificate
+
+| | |
+|---|---|
+| **Weight** | 15 points |
+| **Method** | TLS handshake on port 443 |
+| **Library** | `sslyze` |
+| **Cost** | Free |
+| **Latency** | < 1 s |
+
+**Collect:** issuer, subject, SAN list, `notBefore` / `notAfter`, negotiated protocol version, cipher suite, chain validity, hostname match.
+
+**Findings:** expired or invalid, self-signed, hostname mismatch, expiring within 30 days, TLS 1.0 / 1.1 accepted.
+
+The SAN list is also a free source of subdomains — feed it into check 5.
+
+---
+
+### 4. Security headers
+
+| | |
+|---|---|
+| **Weight** | 12 points |
+| **Method** | One `GET` to `https://<domain>/`, follow up to 3 redirects |
+| **Cost** | Free |
+| **Latency** | < 2 s |
+
+**Headers inspected:** `Strict-Transport-Security`, `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options` (or CSP `frame-ancestors`), `Referrer-Policy`.
+
+Also capture response headers and body for **tech fingerprinting** — server banner, framework hints, `X-Powered-By`, JS bundle names. This feeds AI call 1 (classification).
+
+**Do not** report a missing `X-XSS-Protection` header. It is deprecated and reporting it signals an unserious tool.
+
+---
+
+### 5. Attack surface — subdomains
+
+| | |
+|---|---|
+| **Weight** | 23 points |
+| **Method** | Certificate Transparency logs via `crt.sh`, plus certificate SANs from check 3 |
+| **Cost** | Free |
+| **Latency** | 2–8 s (slowest check) |
+
+**Process**
+
+1. Query `https://crt.sh/?q=%25.<domain>&output=json`
+2. Deduplicate, strip wildcards
+3. Resolve each to check it is live
+4. Issue one `HEAD` request to each live host
+5. Flag hosts matching risk patterns whose name resolves **and** returns < 400
+
+**Risk patterns:** `staging`, `stage`, `dev`, `test`, `uat`, `qa`, `demo`, `admin`, `internal`, `vpn`, `jenkins`, `grafana`, `kibana`, `phpmyadmin`, `jira`, `gitlab`, `backup`, `old`, `legacy`
+
+**Also flag:** directory listing enabled (`Index of /` in body), default landing pages, HTTP-only hosts (no HTTPS redirect).
+
+`crt.sh` is frequently slow or unavailable. Set a hard 8-second timeout, fall back to SANs from check 3, and mark the check `inconclusive` rather than `pass` if the fallback yields nothing. **Never grade a company well because a check failed to run.**
+
+---
+
+## Output shape
+
+Each check returns:
+
+```python
+{
+  "id": "dmarc",
+  "label": "DMARC policy",
+  "status": "pass" | "warn" | "fail" | "inconclusive",
+  "detail": "No DMARC record found",
+  "evidence": { ... },          # raw data, for audit and dispute
+  "deductions": [               # consumed by the scoring engine
+    {"rule": "dmarc.absent", "points": 18}
+  ]
+}
+```
+
+`evidence` is mandatory. If a customer or an underwriter disputes a finding, we must be able to show exactly what we observed.
+
+---
+
+## Execution
+
+All five run **concurrently**, feeding an `asyncio.Queue` so results stream as they complete while the client renders them in a fixed order. **Do not use `asyncio.gather`** — it resolves all-at-once and defeats the streaming feed. The pattern is in [backend.md §4](backend.md#4-concurrency-pattern). A crash in one check must never fail the scan. Per-check timeouts:
+
+| Check | Timeout |
+|---|---|
+| Email authentication | 3 s |
+| TLS | 5 s |
+| Headers | 6 s |
+| Breached credentials | 8 s |
+| Subdomains | 8 s |
+
+Overall scan hard limit: 30 seconds.
+
+---
+
+## Later tiers (not Tier 0)
+
+| Check | Tier | Source |
+|---|---|---|
+| Exposed services / open ports | 2 | Shodan API (~₹6,000/mo) — reads *their* index, still passive for us |
+| Dark-web credential exposure | 2 | Commercial feed |
+| EOL / vulnerable component versions | 2 | Fingerprint → CVE database |
+| Verified MFA coverage | 3 | Google Workspace / M365 read-only OAuth |
+| EDR deployment coverage | 3 | CrowdStrike / SentinelOne read-only API |
+| Backup immutability and last restore test | 4 | AWS / GCP read-only role |
+| Secret scanning, branch protection | 4 | GitHub read-only App |
+
+
+---
+
+## Libraries
+
+| Check | Library | Version | Why this one |
+|---|---|---|---|
+| Email auth | **`checkdmarc`** | 5.17+ | Parses *and validates* SPF and DMARC rather than regexing a TXT record. Counts SPF DNS lookups and void lookups per mechanism — that is how we detect `spf.lookup_overflow` (the >10 lookup limit in RFC 7208) without writing a resolver. Warns when a record is made ineffective by `sp=`, and flags tags removed in RFC 9989. |
+| DNS primitives | **`dnspython`** | 2.7+ | Direct TXT lookups for DKIM selector probing, and async resolution for the subdomain check. `checkdmarc` already depends on it. |
+| TLS | **`sslyze`** | 6.x | Protocol version enumeration, cipher suites, chain validation, in one async scan. Writing this on raw `ssl` + `socket` is possible but you re-implement chain building badly. |
+| HTTP | **`httpx`** | 0.27+ | Async, HTTP/2, redirect control, per-request timeouts. One client, reused. |
+| Cert transparency | **`httpx`** against `crt.sh` | — | No library needed; it returns JSON. Cache aggressively — it is slow and rate-limits. |
+| Public suffix | **`publicsuffixlist`** | — | Distinguishes `co.in` from a real registrable domain. Pulled in by `checkdmarc`. |
+
+**Deliberately not used:**
+
+| | Why not |
+|---|---|
+| `nmap` / `masscan` / `python-nmap` | Active scanning. Prohibited at Tier 0 — see the legal basis above. |
+| `shodan` | Paid, and its data is a stale index rather than a live read. Revisit at Tier 3. |
+| `theHarvester`, `amass`, `subfinder` | Built for offensive recon; many modes are active. CT logs plus certificate SANs give us what we need passively. |
+| `requests` | Synchronous. Blocks the event loop and serialises five checks that must run concurrently. |
+
+---
+
+## Benchmarks the rubric is calibrated against
+
+We did not invent the idea of grading a domain. Four published methodologies are the reference points, and each one anchors a different part of our rubric.
+
+| Benchmark | Owner | What it grades | What we borrow |
+|---|---|---|---|
+| **SSL Labs Server Rating Guide** | Qualys | TLS configuration, 0–100 → A+ to F | The **grade-band idea and the zero-in-a-category rule**. Their bands: A ≥ 80, B ≥ 65, C ≥ 50, D ≥ 35, E ≥ 20, F < 20. |
+| **HTTP Observatory** | Mozilla | Security headers, baseline 100 with penalties → A+ to F | The **penalty-from-100 model** — start at 100, deduct. Our header deductions are calibrated against theirs. Open-source scoring doc. |
+| **Internet.nl** | Dutch Internet Standards Platform | IPv6, DNSSEC, HTTPS, DMARC, SPF, DKIM, STARTTLS, DANE, RPKI → % | The **standards-compliance framing**, and their own caveat: a 100% score is not proof of security. Fully open source. |
+| **SecurityScorecard / BitSight / UpGuard** | Commercial | Whole-company posture, A–F or 250–900 | The **A–F letter** as the consumer-facing unit. These are the scores underwriters already recognise. |
+
+**Where we deliberately differ:**
+
+1. **Mozilla and SSL Labs grade one surface each.** We grade five and weight them by *insurance* relevance, not by security-purist relevance. That is why DMARC carries 18 points and CSP carries 4 — business email compromise is a top cyber claim type; a missing CSP rarely is.
+2. **Our bands are stricter at the top.** A = 85, not 80. A grade A should be rare enough to mean something to an underwriter.
+3. **Nobody publishes an insurance-weighted rubric.** SecurityScorecard and BitSight are opaque by design. Ours is fully published, which is the point — see [scoring-and-pricing.md](scoring-and-pricing.md).
