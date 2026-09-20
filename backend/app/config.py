@@ -33,6 +33,17 @@ MONGODB_URI = os.getenv("MONGODB_URI") or None
 MONGODB_DB = os.getenv("MONGODB_DB", "scorecard")
 HIBP_API_KEY = os.getenv("HIBP_API_KEY") or None
 
+# SSLMate Cert Spotter. FREE, and the most reliable certificate-transparency
+# source we found — 6/6 successful where crt.sh managed 1/6, in a third of
+# the time. Measured 2026-09-20.
+#
+# Without a key the unauthenticated limit is low enough that a handful of
+# scans exhausts it and the check starts returning HTTP 429, which costs us
+# the whole 23-point attack-surface category. A free key at
+# https://sslmate.com/signup?for=certspotter_api raises it to 100 queries
+# an hour, which is well past what the prototype needs. Strongly recommended.
+CERTSPOTTER_API_KEY = os.getenv("CERTSPOTTER_API_KEY") or None
+
 SCAN_CACHE_HOURS = int(os.getenv("SCAN_CACHE_HOURS", "6"))
 
 # --- timing --------------------------------------------------------------
@@ -42,8 +53,9 @@ SCAN_CACHE_HOURS = int(os.getenv("SCAN_CACHE_HOURS", "6"))
 #   tls         ~0.2s   fast when healthy; the 4s probe budget is separate
 #   headers     ~0.2s   one GET
 #   creds       ~0.6s   one HIBP call
-#   subdomains  9-20s  crt.sh is 4-8s AND unreliable enough to need a
-#                       retry, then a probe sweep over up to 40 hosts
+#   subdomains  4-12s  Cert Spotter ~1.5s and crt.sh 4-8s, issued
+#                       concurrently and satisfied by either, then a probe
+#                       sweep over up to 40 hosts
 #
 # A budget must exceed the sum of the check's own internal timeouts, or the
 # runner kills it and throws away work that had already succeeded. That is
@@ -55,7 +67,7 @@ TIMEOUTS = {
     "tls": 10.0,        # handshake 5s + a 4s shared budget for the two probes
     "headers": 8.0,
     "creds": 10.0,
-    "subdomains": 24.0,  # crt.sh 8s x2 with a 1s gap, then the probe sweep
+    "subdomains": 15.0,  # two CT sources concurrently (~2-8s), then the probe sweep
 }
 SCAN_HARD_LIMIT = 30.0
 

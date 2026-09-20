@@ -60,8 +60,20 @@ async def _own_breaches(domain: str, client: httpx.AsyncClient) -> list[dict]:
 
 
 async def run(domain: str) -> CheckResult:
-    async with httpx.AsyncClient(follow_redirects=True) as client:
-        breaches = await _own_breaches(domain, client)
+    try:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            breaches = await _own_breaches(domain, client)
+    except httpx.HTTPStatusError as exc:
+        # HIBP rate-limits anonymous callers. A 429 means we did not look,
+        # which is not the same as finding nothing — so the 8 points leave
+        # the denominator rather than being awarded.
+        return CheckResult.inconclusive(
+            "creds", f"Breach database unavailable (HTTP {exc.response.status_code})",
+            "Breach history")
+    except Exception as exc:
+        return CheckResult.inconclusive(
+            "creds", f"Breach database unavailable ({type(exc).__name__})",
+            "Breach history")
 
     # Points that could not be assessed are removed from the denominator,
     # never scored as zero. docs/scoring-and-pricing.md section 3

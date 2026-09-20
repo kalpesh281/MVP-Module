@@ -24,6 +24,7 @@ import re
 import httpx
 
 from ..config import (
+    CERTSPOTTER_API_KEY,
     SUBDOMAIN_MAX_PROBES,
     SUBDOMAIN_PROBE_CONCURRENCY,
     SUBDOMAIN_RISK_PATTERNS,
@@ -33,6 +34,28 @@ from ..config import (
 from .base import CheckResult, Deduction
 
 _CRTSH = "https://crt.sh/"
+_CERTSPOTTER = "https://api.certspotter.com/v1/issuances"
+
+# Measured 2026-09-20 across six Indian SaaS domains, run back to back:
+#
+#   crt.sh        1/6 succeeded, 3.6-8.5s, ReadTimeout or 502 otherwise
+#   certspotter   6/6 succeeded, 1.2-2.6s
+#
+# So certspotter leads and crt.sh is the second opinion, both issued
+# concurrently and whatever answers is used. crt.sh returns far more rows
+# when it works — 717 for zerodha.com against certspotter's 39 — which is
+# why it stays in rather than being dropped.
+#
+# Neither is authoritative on its own: a CT log records certificates, not
+# hosts, so this is always a lower bound on a company's real surface. We
+# say "publicly visible" rather than "all" for that reason.
+_CERTSPOTTER_TIMEOUT = 6.0
+_CERTSPOTTER_PAGES = 2          # 100 issuances per page
+
+# The two phases of this check, both bounded, both inside
+# TIMEOUTS['subdomains'] with room to spare.
+_CT_BUDGET = 5.0        # certificate transparency lookups
+_PROBE_BUDGET = 8.0     # the live-host sweep that follows
 # Must leave room inside TIMEOUTS['subdomains'] for the probe sweep
 # that follows. crt.sh answers in 3-4s when healthy.
 # Measured 2026-09-20: three consecutive requests for the same domain
@@ -117,6 +140,88 @@ async def _from_crtsh(domain: str, client: httpx.AsyncClient) -> set[str]:
     raise last if last else RuntimeError("crt.sh unavailable")
 
 
+async def _from_certspotter(domain: str, client: httpx.AsyncClient) -> set[str]:
+    """Hostnames from SSLMate's Cert Spotter. Faster and far more reliable
+    than crt.sh, but paginated at 100 issuances a page and unauthenticated
+    requests are rate-limited, so we take two pages and stop."""
+    hosts: set[str] = set()
+    after: str | None = None
+    # A 429 here is not a transient failure — it is the unauthenticated
+    # quota, and it stays exhausted for the rest of the hour. Set
+    # CERTSPOTTER_API_KEY (free) to raise it to 100 queries/hour.
+
+    for _ in range(_CERTSPOTTER_PAGES):
+        params: dict[str, str] = {
+            "domain": domain,
+            "include_subdomains": "true",
+            "expand": "dns_names",
+        }
+        if after:
+            params["after"] = after
+        headers = ({"Authorization": f"Bearer {CERTSPOTTER_API_KEY}"}
+                   if CERTSPOTTER_API_KEY else None)
+        response = await client.get(_CERTSPOTTER, params=params,
+                                    headers=headers,
+                                    timeout=_CERTSPOTTER_TIMEOUT)
+        response.raise_for_status()
+        rows = response.json()
+        if not rows:
+            break
+        for row in rows:
+            for raw in row.get("dns_names", ()):
+                name = _clean_san(raw)
+                if name and name.endswith(f".{domain}"):
+                    hosts.add(name)
+        after = str(rows[-1].get("id", "")) or None
+        if after is None:
+            break
+    return hosts
+
+
+async def _from_ct(domain: str, client: httpx.AsyncClient) -> tuple[set[str], str]:
+    """Both CT sources at once. Returns (hostnames, what we used).
+
+    Concurrent rather than sequential, and satisfied by either: waiting for
+    crt.sh to time out before trying the other one costs 8 seconds on the
+    majority of scans, and those 8 seconds were the difference between the
+    check completing and the runner killing it.
+    """
+    jobs = {
+        asyncio.create_task(_from_certspotter(domain, client)): "Cert Spotter",
+        asyncio.create_task(_from_crtsh(domain, client)): "crt.sh",
+    }
+
+    # A shared budget, not the sum of two. crt.sh times out at 8s on most
+    # requests; waiting the full 8s for it after Cert Spotter has already
+    # answered in 1.5s left no room for the host sweep that follows, which
+    # is what made this check time out on large domains.
+    done, pending = await asyncio.wait(jobs, timeout=_CT_BUDGET)
+    for task in pending:
+        task.cancel()
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+
+    hosts: set[str] = set()
+    used: list[str] = []
+    failed: list[str] = [f"{jobs[t]}: no answer in {_CT_BUDGET:.0f}s" for t in pending]
+
+    for task in done:
+        label = jobs[task]
+        exc = task.exception()
+        if exc is not None:
+            reason = type(exc).__name__
+            if isinstance(exc, httpx.HTTPStatusError):
+                reason = f"HTTP {exc.response.status_code}"
+            failed.append(f"{label}: {reason}")
+            continue
+        hosts |= task.result()
+        used.append(label)
+
+    if not used:
+        raise RuntimeError("; ".join(failed))
+    return hosts, " + ".join(sorted(used))
+
+
 async def _probe(host: str, client: httpx.AsyncClient, gate: asyncio.Semaphore) -> dict | None:
     """One HEAD request. Returns a live-host record, or None if it is not live.
 
@@ -189,24 +294,21 @@ async def run(domain: str, sans: list[str] | None = None) -> CheckResult:
         follow_redirects=False, headers={"User-Agent": USER_AGENT}
     ) as client:
         try:
-            from_ct = await _from_crtsh(domain, client)
+            from_ct, used = await _from_ct(domain, client)
             candidates |= from_ct
-            source = "certificate transparency" if from_ct else source
+            source = used if from_ct else source
         except Exception as exc:
-            # crt.sh is down more often than it is up. Fall through to SANs.
+            # Both CT sources failed. Fall through to the certificate SANs
+            # we already have — and if those are empty too (a wildcard
+            # certificate names no host), say so rather than reporting a
+            # clean surface we never actually looked at.
             if not candidates:
-                # Say why. "Could not read" with no reason is undebuggable
-                # six weeks from now, and crt.sh fails in several different
-                # ways: timeout, 502, and rate-limiting after repeat queries.
-                reason = type(exc).__name__
-                if isinstance(exc, httpx.HTTPStatusError):
-                    reason = f"HTTP {exc.response.status_code}"
                 return CheckResult.inconclusive(
                     "subdomains",
-                    f"Certificate transparency logs unavailable ({reason})",
+                    f"Certificate transparency logs unavailable ({exc})",
                     "Public subdomains",
                 )
-            source = f"certificate SANs (crt.sh unavailable: {type(exc).__name__})"
+            source = f"certificate SANs (CT unavailable: {exc})"
 
         total_found = len(candidates)
 
@@ -219,9 +321,28 @@ async def run(domain: str, sans: list[str] | None = None) -> CheckResult:
         # one process starves them all and turns healthy hosts into
         # timeouts — which is how the plaintext false positives happened.
         gate = asyncio.Semaphore(SUBDOMAIN_PROBE_CONCURRENCY)
-        results = await asyncio.gather(
-            *(_probe(h, client, gate) for h in probe_list), return_exceptions=True
-        )
+        tasks = [asyncio.create_task(_probe(h, client, gate)) for h in probe_list]
+
+        # asyncio.wait raises on an empty set. This is not a hypothetical:
+        # a company whose only certificate is a wildcard contributes no
+        # hostnames at all, and _clean_san drops wildcards on purpose.
+        if not tasks:
+            results, probed, swept_all = [], 0, True
+        else:
+            # The sweep gets its own wall-clock budget and we keep whatever
+            # finished inside it. Letting it run unbounded is what pushed
+            # the whole check past the runner's timeout on a company with
+            # 200+ hostnames — and the runner then threw away every host we
+            # had already confirmed. A partial sweep is a real finding; a
+            # timeout is nothing at all.
+            done, pending = await asyncio.wait(tasks, timeout=_PROBE_BUDGET)
+            for task in pending:
+                task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+            results = [t.result() for t in done
+                       if not t.cancelled() and t.exception() is None]
+            probed, swept_all = len(done), not pending
 
     live = [r for r in results if isinstance(r, dict)]
 
@@ -246,7 +367,8 @@ async def run(domain: str, sans: list[str] | None = None) -> CheckResult:
     evidence = {
         "source": source,
         "hostnames_found": total_found,
-        "probed": len(probe_list),
+        "probed": probed,
+        "sweep_complete": swept_all,
         "live": len(live),
         "risky_hosts": risky,
         "truncated": total_found > SUBDOMAIN_MAX_PROBES,

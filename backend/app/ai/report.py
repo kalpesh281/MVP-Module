@@ -106,6 +106,17 @@ def _apply_static_copy(fixes: list[Fix]) -> None:
         fix.how_to_fix = fix.how_to_fix or how
 
 
+def static(scored: ScoreResult, fixes: list[Fix], strengths: list[str]) -> dict[str, Any]:
+    """The report with no model involved. Used when the AI layer is absent
+    and when the scan has run out of time to wait for it."""
+    _apply_static_copy(fixes)
+    return {
+        "headline": fallback.headline(scored.grade),
+        "strengths": list(strengths),
+        "generated_by": None,
+    }
+
+
 async def write(
     domain: str,
     scored: ScoreResult,

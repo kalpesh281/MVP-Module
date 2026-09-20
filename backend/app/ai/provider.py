@@ -17,6 +17,7 @@ Two things this layer guarantees to everything above it:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -79,7 +80,19 @@ class Client:
         async with httpx.AsyncClient(timeout=self._timeout) as http:
             for model in self.chain:
                 try:
-                    raw = await self._call(http, model, system, user, schema, max_tokens)
+                    # wait_for, not just the httpx timeout. httpx applies its
+                    # timeout per read; a free-tier model that returns one
+                    # byte every few seconds never trips it and can run for
+                    # a minute. One observed call took 75s that way, which
+                    # would blow SCAN_HARD_LIMIT on its own.
+                    raw = await asyncio.wait_for(
+                        self._call(http, model, system, user, schema, max_tokens),
+                        self._timeout,
+                    )
+                except (asyncio.TimeoutError, TimeoutError):
+                    failures.append(f"{model.name}: timed out after {self._timeout}s")
+                    log.warning("provider %s timed out after %ss", model.name, self._timeout)
+                    continue
                 except Exception as exc:
                     failures.append(f"{model.name}: {type(exc).__name__}: {exc}")
                     log.warning("provider %s failed: %s", model.name, exc)
