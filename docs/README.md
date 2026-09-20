@@ -11,6 +11,8 @@ Product: **Cyber Risk Scorecard** — an AI-assisted cyber insurance platform fo
 | 0c | [testing.md](testing.md) | **The test gates** — what must pass before each stage is signed off | **Start here before Stage 2** |
 | 0d | [education-layer.md](education-layer.md) | **Why teaching is the product** — what they must learn, in what order, and how to write it | **Everyone** |
 | 0e | [defending-the-score.md](defending-the-score.md) | **How to answer "how do you score this?"** — layered answers and the hard follow-ups | Client conversations |
+| 0f | [defending-the-premium.md](defending-the-premium.md) | **How to answer "where does that number come from?"** — the rate card, and why we price on two inputs and not five | Client conversations |
+| 0g | [how-a-scan-works.md](how-a-scan-works.md) | **The whole path, keystroke to report** — flow diagram, timings, what leaves the building, every failure path | **Everyone** |
 | 0b | [vision.md](vision.md) | Where this goes: the six module ladders, adjacent revenue, defensibility, honest risks | Client conversations |
 | 1 | [overview.md](overview.md) | What we're building and why, market context, competitors, tier ladder, roadmap | Everyone |
 | 2 | [tier-0-scorecard-spec.md](tier-0-scorecard-spec.md) | The first shippable surface: screens, states, copy, interactions, API contract, acceptance criteria | Everyone building Tier 0 |

@@ -25,8 +25,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import ai, db, orchestrator, store
+from . import ai, db, methodology, orchestrator, store
 from .config import (
+    RATE_VERSION,
     RATE_LIMIT_PER_IP,
     RATE_LIMIT_WINDOW_S,
     RUBRIC_VERSION,
@@ -182,6 +183,17 @@ async def cta(body: CtaClick):
     return {"ok": True}
 
 
+@app.get("/api/methodology")
+async def methodology_endpoint():
+    """The published rubric and rate card, read from the live constants.
+
+    Static: no database, no model, no domain. It is the same answer for
+    everyone, which is the point — a scoring system nobody can check is
+    indistinguishable from one that was invented.
+    """
+    return methodology.payload()
+
+
 @app.get("/api/config")
 async def config():
     """What the frontend needs to know about the backend's behaviour."""
@@ -189,4 +201,7 @@ async def config():
         "cache_hours": SCAN_CACHE_HOURS,
         "rate_limit_per_hour": RATE_LIMIT_PER_IP,
         "rubric_version": RUBRIC_VERSION,
+        # The footer used to carry these as literal text and went stale the
+        # first time a version moved. Versions are served, never typed.
+        "rate_version": RATE_VERSION,
     }

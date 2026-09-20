@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
-import { Clock, Eye, Lock } from 'lucide-react';
+import { Activity, Eye, Lock } from 'lucide-react';
 
 import DomainInput from '../Components/Scan/DomainInput';
 import Term from '../Components/Extra/Term';
@@ -20,9 +20,13 @@ const ASSURANCES = [
     body: 'No sign-up, no email, no call. You get the report, then decide whether you want a closer number.',
   },
   {
-    Icon: Clock,
-    title: 'Under thirty seconds',
-    body: 'Seven checks run at once. You watch each one land rather than waiting on a blank screen.',
+    // No duration claimed. A scan takes as long as the slowest public
+    // source answers, and a number here is a promise we would be breaking
+    // on the first slow certificate log — on the one page whose whole job
+    // is to be checkable, thirty seconds later, by the reader.
+    Icon: Activity,
+    title: 'You watch it happen',
+    body: 'Seven checks run at once, and each result appears the moment it lands — not a spinner and then an answer.',
   },
 ];
 
@@ -48,9 +52,13 @@ export default function HomePage() {
       </motion.h1>
 
       <motion.p variants={fadeUp} className="mt-4 max-w-xl text-lg leading-relaxed text-ink-muted">
+        {/* No cover amount promised here. It follows the revenue band —
+            ₹1 Cr for the smallest, ₹25 Cr for the largest — so naming one
+            on a page that has not met the company yet is a figure most
+            readers would not go on to see. */}
         Enter your domain. You get a security grade, an estimated{' '}
-        <Term id="premium">premium</Term> for ₹5 Cr of cover, and the specific
-        things worth fixing before you apply.
+        <Term id="premium">premium</Term> for cover at your size, and the
+        specific things worth fixing before you apply.
       </motion.p>
 
       <motion.div variants={fadeUp} className="mt-8">

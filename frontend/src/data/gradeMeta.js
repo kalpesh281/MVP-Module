@@ -3,7 +3,7 @@
  * `summary` mirrors scoring/grades.py GRADE_SUMMARY so the page reads the
  * same when the AI layer is offline and the headline is static. */
 export const GRADE_META = {
-  A: { color: 'var(--color-grade-a)', summary: 'Strong. Nothing here would hold up an insurance application.' },
+  A: { color: 'var(--color-grade-a)', summary: 'Strong. Nothing an insurer can see from outside stands out as a problem.' },
   B: { color: 'var(--color-grade-b)', summary: 'Good, with a few gaps worth closing before you apply.' },
   C: { color: 'var(--color-grade-c)', summary: 'Workable, but an underwriter will ask about several of these.' },
   D: { color: 'var(--color-grade-d)', summary: 'Weak. Expect a higher premium or additional conditions.' },

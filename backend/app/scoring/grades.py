@@ -23,7 +23,7 @@ GRADES: tuple[str, ...] = tuple(g for g, _ in BANDS)
 # One line per grade, used when the AI layer is unavailable. Deliberately
 # plain: this is the sentence a founder reads first.
 GRADE_SUMMARY: dict[str, str] = {
-    "A": "Strong. Nothing here would hold up an insurance application.",
+    "A": "Strong. Nothing an insurer can see from outside stands out as a problem.",
     "B": "Good, with a few gaps worth closing before you apply.",
     "C": "Workable, but an underwriter will ask about several of these.",
     "D": "Weak. Expect a higher premium or additional conditions.",

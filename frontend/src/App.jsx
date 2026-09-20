@@ -11,6 +11,7 @@ import RouteFallback from './Components/Extra/RouteFallback';
 const HomePage = lazy(() => import('./Pages/HomePage'));
 const ScanPage = lazy(() => import('./Pages/ScanPage'));
 const SharedScanPage = lazy(() => import('./Pages/SharedScanPage'));
+const MethodologyPage = lazy(() => import('./Pages/MethodologyPage'));
 const NotFoundPage = lazy(() => import('./Pages/NotFoundPage'));
 
 export default function App() {
@@ -24,6 +25,9 @@ export default function App() {
               <Route path="/scan/:domain" element={<ScanPage />} />
               {/* Shareable result URL, backed by GET /api/scan/{scan_id} */}
               <Route path="/s/:scanId" element={<SharedScanPage />} />
+              {/* Public on purpose: the rubric is the thing we give
+                  away, the scan history is the product. */}
+              <Route path="/methodology" element={<MethodologyPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>

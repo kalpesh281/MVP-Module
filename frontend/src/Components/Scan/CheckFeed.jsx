@@ -1,4 +1,5 @@
 import { useSelector } from 'react-redux';
+import { Link } from 'react-router-dom';
 import { selectChecks, selectCompletedCount } from '../../Features/scanSlice';
 import CheckRow from './CheckRow';
 import CircularProgress from './CircularProgress';
@@ -32,11 +33,27 @@ export default function CheckFeed({ domain }) {
               ? 'Reading what your domain publishes publicly.'
               : `${total} checks complete.`}
             <InfoTip label="What this scan does and does not do">
-              Every check reads only what your domain already publishes to the
-              public internet — DNS records, your TLS certificate, your response
-              headers, and public certificate transparency logs. Nothing is
-              probed, port-scanned, fuzzed or logged into. It is the same
-              information any visitor to your site can see.
+              <span className="block">
+                Every check reads only what your domain already publishes to the
+                public internet — DNS records, your TLS certificate, your
+                response headers, and public certificate transparency logs.
+                Nothing is probed, port-scanned, fuzzed or logged into. It is the
+                same information any visitor to your site can see.
+              </span>
+              {/* Volunteered, not buried. The grade measures a slice of a
+                  company's security, and a reader who mistakes it for the
+                  whole thing was misled by us, not by their own optimism. */}
+              <span className="mt-2 block">
+                That also means it cannot see most of what keeps a company safe:
+                multi-factor authentication, backups, patching, or anything
+                behind a login. A strong grade is not a clean bill of health.
+              </span>
+              <Link
+                to="/methodology"
+                className="mt-2 block font-medium text-accent underline-offset-2 hover:underline"
+              >
+                Every rule, and what we do not measure
+              </Link>
             </InfoTip>
           </p>
         </div>

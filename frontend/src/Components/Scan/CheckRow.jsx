@@ -25,6 +25,10 @@ export default function CheckRow({ check }) {
   const pending = check.status === 'pending';
   const { Icon, tone, bg, label } = ICONS[check.status] ?? ICONS.inconclusive;
   const detail = CHECK_DETAIL[check.id];
+  // Exactly which URL the observation came from. Without it, "Missing CSP"
+  // reads as a claim about a company's whole estate rather than about the
+  // one page we requested — which is all we ever looked at.
+  const source = check.evidence?.final_url;
 
   return (
     <li className="flex items-start gap-3.5 px-5 py-4">
@@ -54,6 +58,15 @@ export default function CheckRow({ check }) {
             <InfoTip label={`What the ${check.label} check looks at`}>
               <span className="block">{detail.what}</span>
               <span className="mt-2 block">{detail.why}</span>
+              {source ? (
+                <span className="mt-2 block text-xs">
+                  <span className="text-ink-faint">Read from </span>
+                  <code className="break-all font-mono text-ink-muted">{source}</code>
+                  <span className="text-ink-faint">
+                    {' '}— this one address, not your whole estate.
+                  </span>
+                </span>
+              ) : null}
               <span className="mt-2.5 block border-t border-line pt-2.5 text-xs text-ink-faint">
                 Worth up to {detail.points} of the 100 points. A clean result
                 deducts nothing.

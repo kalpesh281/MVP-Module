@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import InfoTip from '../Extra/InfoTip';
 import { rupeeRange, rupees } from '../../utils/format';
 
@@ -48,6 +49,12 @@ export default function PremiumCard({
               hold, because both are inferred from your website — a number we can
               trace beats a number that looks precise.
             </span>
+            <Link
+              to="/methodology"
+              className="mt-2 block font-medium text-accent underline-offset-2 hover:underline"
+            >
+              See the full rate card
+            </Link>
           </span>
         </InfoTip>
       </p>

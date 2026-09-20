@@ -35,6 +35,12 @@ export default function Header() {
             policy costs 4. No model decides your score, which is why the same
             domain scanned twice gives the same grade, and why we can show you
             the exact rule behind any finding you disagree with.
+            <Link
+              to='/methodology'
+              className='mt-2 block font-medium text-accent underline-offset-2 hover:underline'
+            >
+              Read the rules and the rate card
+            </Link>
           </InfoTip>
         </span>
       </div>
