@@ -146,7 +146,7 @@ Most buyers learn this **after** the wire has left. Teaching it before they buy 
 
 ### Stage 2.5 — "I didn't know that's why it was a range"
 
-Answering four questions and watching ±60% become ±15% teaches what underwriting *is*: less uncertainty, better price. They learn the mechanic by operating it.
+Answering three questions and watching ±60% become ±30% teaches what underwriting *is*: less uncertainty, better price. They learn the mechanic by operating it — and the range that *stays* is the lesson too, because knowing a company's size tells you nothing about whether its MFA is enforced.
 
 ---
 

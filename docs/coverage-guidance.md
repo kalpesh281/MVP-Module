@@ -28,11 +28,24 @@ Both follow the project's core rule: **the numbers are deterministic, the prose 
   notification, forensics, legal and regulatory response are counted.
   ₹1 Cr would leave you exposed.
 
-  ○ ₹1 Cr    ● ₹5 Cr    ○ ₹10 Cr        ← switching re-prices instantly
+  ○ ₹2 Cr    ● ₹5 Cr    ○ ₹10 Cr        ← switching re-prices instantly
 ─────────────────────────────────────────────────────────────
 ```
 
 Making the limit selectable matters. It shows the premium is a function of a decision they control, not a quoted price they must accept.
+
+**The three options are chosen dynamically**, never hardcoded. Take the limit ladder from [scoring-and-pricing.md §4.3](scoring-and-pricing.md#43-limit-multipliers) — ₹1 Cr · ₹2 Cr · ₹5 Cr · ₹10 Cr · ₹25 Cr — and show the recommended rung plus the one below and the one above. At the ends of the ladder, shift the window inward so three options always render.
+
+```python
+LADDER = [10_000_000, 20_000_000, 50_000_000, 100_000_000, 250_000_000]
+
+def options_for(recommended: int) -> list[int]:
+    i = LADDER.index(recommended)
+    i = max(1, min(i, len(LADDER) - 2))     # keep a full window at the ends
+    return LADDER[i - 1 : i + 2]
+```
+
+This matters because the `baseline` driver recommends **₹2 Cr**. A fixed ₹1/₹5/₹10 selector would not contain that company's own recommendation.
 
 ## Selection logic — deterministic
 
@@ -239,9 +252,9 @@ Both under `scoring/`, not `ai/` — they are rules, not generation. The existin
   "driver": "pii",
   "source": null,
   "options": [
-    {"limit": 20000000, "premium": {"low": 38000,  "high": 54000}},
-    {"limit": 50000000, "premium": {"low": 85000,  "high": 120000}, "recommended": true},
-    {"limit": 100000000,"premium": {"low": 131000, "high": 186000}}
+    {"limit": 20000000,  "premium": {"low": 55250,  "high": 78000}},
+    {"limit": 50000000,  "premium": {"low": 85000,  "high": 120000}, "recommended": true},
+    {"limit": 100000000, "premium": {"low": 131750, "high": 186000}}
   ],
   "breach_cost_band": {"low": 10000000, "high": 30000000},
   "rationale": { "headline": "...", "reasoning": "...", "downside": "..." }
@@ -260,6 +273,8 @@ Both under `scoring/`, not `ai/` — they are rules, not generation. The existin
 ```
 
 **All three limit options and their premiums ship in the payload**, so switching limits is instant and needs no network call — same pattern as the fix simulator.
+
+Check the arithmetic against the multipliers: grade C, revenue under ₹5 Cr, ₹5 Cr base ₹85,000–1,20,000. ₹2 Cr = ×0.65 → 55,250–78,000. ₹10 Cr = ×1.55 → 1,31,750–1,86,000. **Every option in the payload must reproduce from the base table × the multiplier.** Add a test.
 
 ## Placement on the page
 

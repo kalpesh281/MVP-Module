@@ -276,7 +276,7 @@ def build(results, score, revenue_band, limit):
         fix.premium_if_fixed = premium_for(fix.grade_if_fixed, revenue_band, limit)
 ```
 
-**Every delta is precomputed server-side** and shipped in the `result` payload, so the frontend's fix simulator needs no network call.
+**Every delta is precomputed server-side** and shipped in the `result` payload, along with `premium_table` — every grade's premium for this company's revenue band and limit. That is what lets the frontend simulator re-price with no network call.
 
 Grouping: all `dmarc.*` → one fix; all `hdr.*` → one "security headers" fix; all `surface.*` → one "attack surface" fix. Per-rule fixes would produce an unreadable list.
 

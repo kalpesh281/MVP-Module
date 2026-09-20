@@ -185,7 +185,7 @@ class Fix(BaseModel):
     title: str              # no security jargon
     why_it_matters: str     # business impact, second person, present tense
     how_to_fix: str         # concrete and actionable
-    effort: Literal["15 minutes","30 minutes","1 hour","2 hours","1 day","1 week"]
+    effort: Literal["15 min","30 min","1 hr","2 hrs","1 day","1 week"]   # rendered verbatim in the UI
     priority: int
 
 class RiskReport(BaseModel):

@@ -252,11 +252,19 @@ export function simulate(result, selectedIds) {
   return {
     score,
     grade:   gradeFor(score),
-    premium: premiumFor(score),     // from result.premium_table, shipped by the server
+    premium: premiumFor(score),     // uses result.premium_table — see the API contract
     saving:  midpoint(result.premium) - midpoint(premiumFor(score)),
   };
 }
 ```
+
+```js
+function premiumFor(score) {
+  return result.premium_table.by_grade[gradeFor(score)];
+}
+```
+
+**`premium_table` must be in the `result` payload.** It ships every grade's premium for that company's revenue band and limit, which is what lets the simulator re-price with no network call. See [tier-0-scorecard-spec.md §7](tier-0-scorecard-spec.md#7-api-contract). Without it this function cannot work and the whole interaction breaks.
 
 Keep this pure and outside React so it can be unit tested against the worked example in [scoring-and-pricing.md §6](scoring-and-pricing.md#6-worked-example).
 

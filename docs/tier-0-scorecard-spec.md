@@ -335,28 +335,21 @@ Returns the stored `result` payload. Backs shareable result URLs.
 
 ## 8. Data model
 
-One table is enough for Tier 0.
+**MongoDB.** One collection — `scans` — is enough for Tier 0. The full document shape, indexes, cache lookup, rate limiting and the day-one analytics queries are in **[database.md](database.md)**, which is authoritative.
 
-```sql
-CREATE TABLE scans (
-  id              TEXT PRIMARY KEY,
-  domain          TEXT NOT NULL,
-  scanned_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-  findings        JSONB NOT NULL,   -- raw check output
-  profile         JSONB,            -- AI call 1 output
-  score           INTEGER NOT NULL,
-  grade           TEXT NOT NULL,
-  report          JSONB NOT NULL,   -- AI call 2 output, merged with computed deltas
-  rubric_version  TEXT NOT NULL,    -- e.g. "v1.0" — never mutate, always version
-  rate_version    TEXT NOT NULL,
-  duration_ms     INTEGER,
-  cta_clicked     BOOLEAN NOT NULL DEFAULT false
-);
-
-CREATE INDEX idx_scans_domain ON scans (domain, scanned_at DESC);
+```js
+{ _id: "scn_...", domain, scanned_at,
+  findings: [...],        // raw check output — the audit trail
+  profile: {...},         // AI call 1, null if it failed
+  score, grade, available_points,
+  report: {...},          // AI call 2 merged with computed deltas
+  premium: {...},
+  rubric_version: "v1.0", // mandatory
+  rate_version:   "v1.0", // mandatory
+  duration_ms, cta_clicked }
 ```
 
-`rubric_version` and `rate_version` are mandatory. A score is only defensible if we can reproduce which rules produced it.
+`rubric_version` and `rate_version` are mandatory. A score is only defensible if we can reproduce which rules produced it. Documents are append-only: the only permitted updates are `cta_clicked` and, from Stage 2.5, attaching `refinement` once.
 
 ---
 

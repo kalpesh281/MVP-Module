@@ -55,7 +55,7 @@ Product: **Cyber Risk Scorecard** — an AI-assisted cyber insurance platform fo
 
 | Component | Status |
 |---|---|
-| Documentation | ✅ Complete for Stages 1, 2, 2.5 |
+| Documentation | ✅ Complete and cross-checked for Stages 1, 2, 2.5 |
 | **Gate 1 (Stage 1)** | ❌ Not passed |
 | **Gate 2 (Stage 2)** | ❌ Blocked on Gate 1 |
 | Backend scaffold | Partial — `config.py`, `requirements.txt`, `.env.example` |
@@ -70,3 +70,16 @@ Product: **Cyber Risk Scorecard** — an AI-assisted cyber insurance platform fo
 - No IRDAI-licensed broker partner identified for Phase 4 placement.
 - No insurer identified for eventual delegated authority.
 - Data retention and deletion policy required **before Tier 3**, when OAuth connectors begin returning employee-level data.
+
+## Where numbers live
+
+When two documents disagree, these win:
+
+| Subject | Authoritative doc |
+|---|---|
+| Rule IDs, point values, grade bands, premium tables, limit multipliers | [scoring-and-pricing.md](scoring-and-pricing.md) |
+| Database shape, indexes, rate limiting | [database.md](database.md) |
+| Event payload shapes | [tier-0-scorecard-spec.md §7](tier-0-scorecard-spec.md#7-api-contract) |
+| Stage scope and gates | [delivery-stages.md](delivery-stages.md) + [testing.md](testing.md) |
+
+Mockups and ASCII layouts anywhere in the docs are **illustrative**. The tables above are normative.
