@@ -16,11 +16,13 @@ import asyncio
 import sys
 import time
 
+from . import ai
 from .domain import InvalidDomain, normalise
 from .scanner import runner
 from .scanner.base import CheckResult
 from .scoring import (
     GRADE_SUMMARY,
+    band_for_headcount,
     build_fixes,
     points_to_next_grade,
     premium_for,
@@ -59,27 +61,48 @@ def _rupees(amount: int | None) -> str:
     return ",".join(parts + [tail])
 
 
-def _report(results: list[CheckResult]) -> dict:
-    """Findings -> score, grade, premium, fixes. No model anywhere here."""
+async def _report(domain: str, results: list[CheckResult]) -> dict:
+    """Findings -> score, grade, premium, fixes, then prose around them.
+
+    The order matters and is the architecture in miniature: everything
+    numeric is settled before a model is called, and nothing a model
+    returns can change it.
+    """
     findings = [r.as_finding() for r in results]
     scored = score(findings)
 
-    # Tier 0 has no revenue signal until AI call 1 lands, so this is the
-    # smallest band. docs/scoring-and-pricing.md 4.2
-    premium = premium_for(scored.grade)
-    fixes, combined = build_fixes(findings, scored)
+    # Call 1 reads the homepage `headers.py` already fetched — no extra
+    # request to the target, and it decides the revenue band.
+    page = next((r.extra for r in results if r.id == "headers" and r.extra), {})
+    profile, classified_by = await ai.classify.run(domain, page)
+    band = band_for_headcount(profile.estimated_size_band if profile else None)
+
+    premium = premium_for(scored.grade, band)
+    fixes, combined = build_fixes(findings, scored, revenue_band=band)
+
+    good = strengths(results)
+    prose = await ai.report.write(domain, scored, fixes, findings, good, profile)
+    good = prose["strengths"]
 
     print("  " + "-" * 66)
+    if profile:
+        print(f"  {profile.company_name} — {profile.what_they_do}")
+        print(f"  {profile.business_model}, {profile.estimated_size_band} people"
+              f"{', DPDP Act applies' if profile.dpdp_act_applies else ''}")
+        print()
+    print(f"  {prose['headline']}")
     if scored.grade_suppressed:
         print(f"  No grade — {scored.inconclusive_points} points could not be measured")
     else:
         gap = points_to_next_grade(scored.score)
-        nudge = f"  ({gap} points from the next grade)" if gap else ""
+        nudge = (f"  ({gap} point{'s' if gap != 1 else ''} from the next grade)"
+                 if gap else "")
         print(f"  Grade {scored.grade}   score {scored.score}/100"
               f"   over {scored.available_points} measurable points{nudge}")
         print(f"  {GRADE_SUMMARY[scored.grade]}")
+    table = premium_table(band)
     print(f"  Estimated premium   ₹{_rupees(premium.low)} – ₹{_rupees(premium.high)}"
-          f"   (₹5 Cr limit, under ₹5 Cr revenue)")
+          f"   (₹5 Cr limit, {table['revenue_band_label']})")
 
     if fixes:
         print("\n  Worth fixing, best value first:")
@@ -88,28 +111,35 @@ def _report(results: list[CheckResult]) -> dict:
             print(f"      +{fix.score_delta} points, {fix.effort}"
                   f" → grade {fix.grade_if_fixed or chr(8212)}"
                   f", saves about ₹{_rupees(fix.saving)}/year")
+            if fix.why_it_matters:
+                print(f"      {fix.why_it_matters}")
+            if fix.how_to_fix:
+                print(f"      → {fix.how_to_fix}")
             if fix.notes:
                 print(f"      affects: {', '.join(fix.notes)}")
         print(f"\n  All of it: score {combined['score']}, grade {combined['grade'] or chr(8212)}, "
               f"about ₹{_rupees(combined['annual_saving'])}/year"
               f" for {combined['total_effort_hours']} hours of work")
 
-    good = strengths(results)
     if good:
         print("\n  Already right:")
         for line in good:
             print(f"   · {line}")
-    print()
+    print(f"\n  copy: {prose['generated_by'] or 'static fallback (no AI)'}"
+          f"   ·   profile: {classified_by or 'none'}\n")
 
     return {
-        "domain": None,
+        "domain": domain,
         **scored.as_dict(),
+        "headline": prose["headline"],
+        "profile": profile.model_dump() if profile else None,
         "premium": premium.as_dict(),
-        "premium_table": premium_table(),
+        "premium_table": table,
         "fixes": [f.as_dict() for f in fixes],
         "combined_if_all_fixed": combined,
         "strengths": good,
         "findings": findings,
+        "generated_by": prose["generated_by"],
     }
 
 
@@ -138,8 +168,7 @@ async def main(raw: str, stream: bool = False, as_json: bool = False) -> int:
 
     print(f"\n  {time.monotonic() - started:.2f}s total\n")
 
-    payload = _report(collected)
-    payload["domain"] = domain
+    payload = await _report(domain, collected)
     if as_json:
         import json
         print(json.dumps(payload, indent=2, ensure_ascii=False))
