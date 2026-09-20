@@ -47,15 +47,16 @@ These have no network and no model. They must be green before anything else is t
 def test_worked_example_reproduces():
     """scoring-and-pricing.md §6 — if this changes, that doc changes with it."""
     findings = [
-        d("dmarc.absent"), d("spf.softfail"),
-        d("creds.medium", count=14),
+        d("dmarc.absent"), d("spf.softfail"), d("breach.historic"),
         d("hdr.no_hsts"), d("hdr.no_csp"),
         d("surface.risk_host", host="staging.example.com"),
     ]
-    result = score(findings, rubric_version="v1.0")
-    assert result.deductions == 46
-    assert result.score == 54
-    assert result.grade == "D"
+    # account exposure is inconclusive at Tier 0 — 12 points leave the denominator
+    result = score(findings, rubric_version="v1.0", inconclusive={"creds.account_exposure"})
+    assert result.deductions == 39
+    assert result.available_points == 88
+    assert result.score == 56
+    assert result.grade == "C"
 ```
 
 If someone "fixes" the rubric to make a demo look better, this test goes red. That is the point.

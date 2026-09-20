@@ -36,9 +36,9 @@ async def main(raw: str) -> int:
     print(f"\nChecking {domain}\n")
     started = time.monotonic()
 
-    from .scanner import email_auth
+    from .scanner import creds, email_auth
 
-    checks = [("email_auth", email_auth.run)]
+    checks = [("email_auth", email_auth.run), ("creds", creds.run)]
 
     for name, fn in checks:
         try:

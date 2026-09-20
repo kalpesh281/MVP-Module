@@ -84,7 +84,7 @@ One document per completed scan. This is the only collection Tier 0 needs.
       status: "fail",
       detail: "No DMARC record found",
       evidence: { lookup: "_dmarc.yourco.com", record: null },
-      deductions: [ { rule: "dmarc.absent", points: 18 } ]
+      deductions: [ { rule: "dmarc.absent" } ]   // points come from the rubric, never the check
     }
   ],
 
@@ -96,9 +96,9 @@ One document per completed scan. This is the only collection Tier 0 needs.
     estimated_size_band: "11-50"
   },
 
-  score: 54,
-  grade: "D",
-  available_points: 100,           // < 100 when checks were inconclusive
+  score: 56,
+  grade: "C",
+  available_points: 88,            // < 100 when checks were inconclusive
 
   report: {                        // AI call 2 merged with computed deltas
     fixes: [ { id, title, why_it_matters, how_to_fix, effort,
@@ -107,7 +107,7 @@ One document per completed scan. This is the only collection Tier 0 needs.
     generated_by: "claude-opus-5"  // or "fallback" when AI was unavailable
   },
 
-  premium: { low: 130000, high: 180000, currency: "INR", limit: 50000000 },
+  premium: { low: 85000, high: 120000, currency: "INR", limit: 50000000 },
 
   rubric_version: "v1.0",          // mandatory
   rate_version: "v1.0",            // mandatory
@@ -250,7 +250,7 @@ await db().scans.aggregate([
 ]).to_list(None)
 ```
 
-**Run the grade-distribution query after the first 50 scans.** The worked example in [scoring-and-pricing.md §6](scoring-and-pricing.md#6-worked-example) lands on grade D, and the rubric weights DMARC heavily. If most Indian SaaS companies come out D or F, that is a deliberate product decision to confirm — not a bug, but not necessarily the message we want on first contact either.
+**Run the grade-distribution query after the first 50 scans.** The worked example in [scoring-and-pricing.md §6](scoring-and-pricing.md#6-worked-example) lands on grade C, and the rubric weights DMARC heavily. If most Indian SaaS companies come out D or F, that is a deliberate product decision to confirm — not a bug, but not necessarily the message we want on first contact either.
 
 ---
 

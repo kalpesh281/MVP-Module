@@ -74,7 +74,7 @@ Build the deterministic path completely before adding AI. Build the frontend aga
 3. Ticking any combination of fixes updates grade and premium instantly, with animation, **with no network call**.
 4. The same domain scanned twice within 6 hours returns the cached result, labelled with its age.
 5. **A scan with every AI provider key unset still produces a valid grade and premium.**
-6. **The worked example in [scoring-and-pricing.md §6](scoring-and-pricing.md#6-worked-example) reproduces exactly** — score 54, grade D.
+6. **The worked example in [scoring-and-pricing.md §6](scoring-and-pricing.md#6-worked-example) reproduces exactly** — 39 deductions, 88 available points, score 56, grade C.
 7. Nothing is asked of the user before the result is shown — no email, no modal.
 8. No horizontal scroll at 320 px.
 9. Every score is reproducible from `findings` + `rubric_version` alone.
@@ -88,8 +88,8 @@ Items 5 and 6 are the ones people skip. Do not sign off without them.
 0:00  Type their domain live
 0:30  Checks stream in — say nothing, let them read
 1:00  Grade and premium appear
-1:15  Tick DMARC. Grade D → B. Premium ₹1,30,000 → ₹60,000.
-      "Two hours of work. Seventy thousand rupees a year."
+1:15  Tick DMARC. Grade C → B. Premium ₹85,000 → ₹60,000.
+      "Two hours of work. Twenty-five thousand rupees a year."
 2:00  Questions
 ```
 

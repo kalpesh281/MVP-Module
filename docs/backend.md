@@ -241,7 +241,8 @@ crt.sh is frequently slow or down. On failure, fall back to TLS SANs; if that yi
 
 ```python
 # app/scoring/rubric.py
-WEIGHTS = {"dmarc": 18, "spf": 7, "dkim": 5, "creds": 20,
+WEIGHTS = {"dmarc": 18, "spf": 7, "dkim": 5,
+           "creds": 20,        # 8 breach history (free) + 12 account exposure (keyed)
            "tls": 15, "headers": 12, "surface": 23}   # = 100
 
 def score(results: list[CheckResult]) -> tuple[int, int]:
@@ -409,7 +410,7 @@ tests/
 
 Two tests that matter more than the rest:
 
-1. **The worked example in [scoring-and-pricing.md §6](scoring-and-pricing.md#6-worked-example) must reproduce exactly** — score 54, grade D, and the four projected outcomes. If the rubric changes, that doc changes with it.
+1. **The worked example in [scoring-and-pricing.md §6](scoring-and-pricing.md#6-worked-example) must reproduce exactly** — 39 deductions, 88 available points, score 56, grade C. If the rubric changes, that doc changes with it.
 2. **Full scan with no provider keys set** must produce a valid grade and premium.
 
 ---

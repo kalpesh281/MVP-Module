@@ -67,15 +67,44 @@ Start at **100**. Apply deductions. Floor at 0.
 
 `dkim.not_found` is reported as a **warning**, never a failure — a custom selector may exist that we cannot enumerate.
 
-### 1.2 Breached credentials — 20 points
+### 1.2 Breach exposure — 20 points, in two halves
+
+The useful data sits behind two different HIBP endpoints with different
+access rules, so the category splits along that line.
+
+**A. Breach history — 8 points.** Free, keyless, available for any domain.
+Has this company itself had a disclosed breach? This is prior-incident
+history, which is a question on every real proposal form.
+
+| Condition | Rule ID | Deduction |
+|---|---|---|
+| No disclosed breach on record | `breach.none` | 0 |
+| One breach, older than 3 years | `breach.historic` | 3 |
+| One breach within 3 years | `breach.recent` | 8 |
+| More than one disclosed breach | `breach.multiple` | 8 |
+
+**B. Account exposure — 12 points.** Requires an HIBP key **and** proof of
+domain ownership, which we do not have for a domain scanned cold. At Tier 0
+this half is `inconclusive` and its 12 points leave the denominator. It
+unlocks at Tier 2, once the user has verified their own domain by email.
 
 | Accounts found | Rule ID | Deduction |
 |---|---|---|
 | 0 | `creds.clean` | 0 |
-| 1–5 | `creds.low` | 6 |
-| 6–20 | `creds.medium` | 10 |
-| 21–100 | `creds.high` | 15 |
-| 100+ | `creds.severe` | 20 |
+| 1–5 | `creds.low` | 4 |
+| 6–20 | `creds.medium` | 6 |
+| 21–100 | `creds.high` | 9 |
+| 100+ | `creds.severe` | 12 |
+
+> **Why this split rather than dropping the category.** The obvious
+> alternative — no key, no check, 20 points out of the denominator — throws
+> away a signal that is free and that underwriters genuinely ask about. A
+> company with two disclosed breaches is a different risk from one with
+> none, and we can establish that for nothing. Half a signal beats none.
+>
+> **Never display a count we cannot substantiate.** Without a key we say
+> "no disclosed breach on record", never "no leaked credentials" — those
+> are different claims and only the first one is true.
 
 ### 1.3 TLS and certificate — 15 points
 
@@ -247,26 +276,45 @@ All deltas are precomputed server-side and returned in the `result` payload, so 
 | No DMARC record | `dmarc.absent` | 18 |
 | SPF ends `~all` | `spf.softfail` | 3 |
 | DKIM found at selector `google` | `dkim.present` | 0 |
-| 14 breached accounts | `creds.medium` | 10 |
+| Historic breach on record (2019) | `breach.historic` | 3 |
 | Certificate valid, 240 days remaining | — | 0 |
 | No HSTS | `hdr.no_hsts` | 5 |
 | No CSP | `hdr.no_csp` | 4 |
 | `staging.yourco.com` live, returns 200 | `surface.risk_host` | 6 |
-| | **Total** | **46** |
+| | **Total** | **39** |
 
-**Score 54 → Grade D.** Hmm — this sits one point below C. That is the rubric working correctly; do not tune the example to flatter the demo. Tune the rubric only with evidence.
+Account exposure is inconclusive at Tier 0 — no key, no ownership proof —
+so its 12 points leave the denominator:
+
+```
+available_points = 100 − 12   (account exposure inconclusive)   = 88
+deductions                                                      = 39
+score = 100 × (88 − 39) / 88 = 55.7 → 56 → grade C
+```
+
+**Score 56 → Grade C.**
+
+> ⚠️ **This example changed when §1.2 was split.** It previously read
+> 46 deductions → 54 → D. The change came from restructuring the category
+> around what data is actually obtainable, **not** from wanting a friendlier
+> letter. Do not tune the example to flatter the demo; tune the rubric only
+> when the evidence changes, and then update this example to follow it.
 
 Projected outcomes:
 
-| Action | Score | Grade | Estimated premium (₹5 Cr limit, revenue < ₹5 Cr) |
-|---|---|---|---|
-| Today | 54 | D | ₹1,30,000 – 1,80,000 |
-| Fix DMARC | 72 | B | ₹60,000 – 85,000 |
-| Fix DMARC + credentials | 82 | B | ₹60,000 – 85,000 |
-| Fix all three | 88 | A | ₹45,000 – 60,000 |
-| | | | **saving ≈ ₹1,02,500** |
+| Action | Deductions | Score | Grade | Estimated premium (₹5 Cr limit, revenue < ₹5 Cr) |
+|---|---|---|---|---|
+| Today | 39 | 56 | C | ₹85,000 – 1,20,000 |
+| Fix DMARC (−18) | 21 | 76 | B | ₹60,000 – 85,000 |
+| + security headers (−9) | 12 | 86 | A | ₹45,000 – 60,000 |
+| + staging host (−6) | 6 | 93 | A | ₹45,000 – 60,000 |
+| | | | | **saving ≈ ₹50,000** |
 
-Note the shape this produces: a single fix (DMARC, 2 hours of work) moves the company two grades. That is the product's core message, and it falls out of the rubric rather than being staged.
+All scores rescaled over 88 available points. A historic breach cannot be
+"fixed" — it stays on the record, which is itself worth saying out loud to
+the user.
+
+Note the shape this produces: a single fix — DMARC, two hours of work — moves the company a full grade and about ₹25,000 a year. That is the product's core message, and it falls out of the rubric rather than being staged.
 
 > The mockup in [tier-0-scorecard-spec.md](tier-0-scorecard-spec.md#43-result) is illustrative. **This document is authoritative** for all numbers.
 

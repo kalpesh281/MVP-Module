@@ -88,7 +88,7 @@ What a founder actually experiences.
     ✓ Email authentication (SPF)   configured
     ✓ Certificate                  valid, expires in 240 days
     ✗ DMARC policy                 not found
-    ⚠ Breached credentials         14 accounts
+    ⚠ Breach history               1 historic breach
     ⚠ Public subdomains            3 reachable
 
  4. Sees the result
@@ -98,9 +98,9 @@ What a founder actually experiences.
 
  5. Plays with the fix simulator          ← the moment that matters
     ── ticks "No DMARC policy"
-    ── grade animates D → B
-    ── premium animates ₹1,30,000 → ₹60,000
-    ── "you'd save ~₹70,000"
+    ── grade animates C → B
+    ── premium animates ₹85,000 → ₹60,000
+    ── "you'd save ~₹25,000"
 
  6. Clicks "Narrow it down"               ← the one metric
     ── three questions, 20 seconds  (Tier 1)
@@ -191,7 +191,7 @@ Tier 0 ships when all of these are true:
 3. Ticking any combination of fixes updates grade and premium instantly, with animation, with no network call.
 4. The same domain scanned twice within 6 hours returns the cached result, labelled with its age.
 5. **A scan with every AI provider key unset still produces a valid grade and premium.**
-6. **The worked example in [scoring-and-pricing.md §6](scoring-and-pricing.md#6-worked-example) reproduces exactly** — score 54, grade D.
+6. **The worked example in [scoring-and-pricing.md §6](scoring-and-pricing.md#6-worked-example) reproduces exactly** — score 56, grade C.
 7. Nothing is asked of the user before the result is shown.
 8. No horizontal scroll at 320 px.
 9. Every score is reproducible from `findings` + `rubric_version` alone.

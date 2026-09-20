@@ -47,20 +47,48 @@ Every scan must send a truthful `User-Agent` identifying the service and a conta
 
 ---
 
-### 2. Breached credentials
+### 2. Breach exposure
 
 | | |
 |---|---|
-| **Weight** | 20 points |
-| **Method** | Have I Been Pwned API v3, domain search |
-| **Cost** | ~₹350 / month |
+| **Weight** | 20 points — **8 free + 12 keyed** |
+| **Method** | Have I Been Pwned API v3 |
+| **Library** | `httpx` |
+| **Cost** | **Free** for the 8-point half · ~₹350/mo for the rest |
 | **Latency** | 1–2 s |
 
-Returns breached accounts on the domain. Requires the `hibp-api-key` header.
+Two endpoints, two access levels. Full rule table in
+[scoring-and-pricing.md §1.2](scoring-and-pricing.md#12-breach-exposure--20-points-in-two-halves).
 
-**Important:** the HIBP domain-search endpoint requires **domain ownership verification**. For Tier 0 (scanning domains we do not control) use the breach-by-domain metadata endpoints available without verification, and reserve verified per-account enumeration for Tier 2+ once the user has confirmed their own domain by email.
+**A. Breach history — free, keyless, works on any domain**
 
-Document precisely which endpoint the implementation uses and what it can and cannot see. Do not display a count we cannot substantiate.
+```
+GET https://haveibeenpwned.com/api/v3/breaches?Domain=<domain>
+```
+
+Returns disclosed breaches of the company's **own** systems. No API key, no
+ownership proof. Send a descriptive `User-Agent`; HIBP rate-limits anonymous
+callers, so cache and space the requests.
+
+This is prior-incident history — a question on every real proposal form —
+and it costs nothing.
+
+**B. Account exposure — needs a key AND proof of domain ownership**
+
+```
+GET https://haveibeenpwned.com/api/v3/breacheddomain/<domain>
+    hibp-api-key: <key>
+```
+
+Counts staff addresses appearing in breach corpora. HIBP requires the caller
+to have **verified they control the domain**, which by definition we have
+not for a domain scanned cold. At Tier 0 this half is `inconclusive` and its
+12 points leave the denominator. It unlocks at Tier 2, after the user
+verifies their own domain by email.
+
+> **Never display a count we cannot substantiate.** Without the keyed half we
+> say *"no disclosed breach on record"* — never *"no leaked credentials"*.
+> Those are different claims and only the first one is true.
 
 ---
 
