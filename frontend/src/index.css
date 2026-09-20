@@ -1,0 +1,107 @@
+@import 'tailwindcss';
+
+/* Tailwind v4 is CSS-first: there is no tailwind.config.js, and every token
+   below becomes a utility automatically (bg-surface, text-grade-c, ...).
+
+   One theme, deliberately. A light/dark pair means two sets of contrast
+   ratios to verify and two ways the grade colours can read differently to
+   two people looking at the same report — on a page whose whole job is to
+   make a single number credible, that is a cost with no return.
+
+   The palette is deliberately restrained. This page tells a founder their
+   security posture is worse than they thought and then asks them to trust a
+   premium estimate — it has to read like a report, not like a growth
+   dashboard. One accent, five grade colours, nothing else. */
+
+@theme {
+  /* --- surfaces ------------------------------------------------------ */
+  --color-canvas: #fbfbfa;
+  --color-surface: #ffffff;
+  --color-raised: #f4f4f2;
+  --color-line: #e5e5e1;
+  --color-line-strong: #d3d3cd;
+
+  /* --- text ---------------------------------------------------------- */
+  --color-ink: #17171a;
+  --color-ink-muted: #5c5c66;
+  --color-ink-faint: #8a8a94;
+
+  /* --- accent -------------------------------------------------------- */
+  --color-accent: #1b4ee0;
+  --color-accent-hover: #1740bd;
+  --color-accent-soft: #eaefff;
+
+  /* --- grades -------------------------------------------------------- */
+  /* Not a red-to-green gradient. A is confident, not celebratory; F is
+     serious, not alarming. Nobody is being congratulated or punished. */
+  --color-grade-a: #1a7f5a;
+  --color-grade-b: #4a8c3f;
+  --color-grade-c: #b07d1a;
+  --color-grade-d: #c25e22;
+  --color-grade-f: #b3342c;
+  --color-grade-none: #6b6b75;
+
+  /* --- check statuses ------------------------------------------------ */
+  --color-pass: #1a7f5a;
+  --color-warn: #b07d1a;
+  --color-fail: #b3342c;
+  --color-inconclusive: #8a8a94;
+
+  /* --- type ---------------------------------------------------------- */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Monaco, 'Cascadia Code', monospace;
+
+  /* --- depth ---------------------------------------------------------
+     Three steps, no more. Insurance interfaces carry enough anxiety
+     without the UI feeling unstable — shadows here separate planes, they
+     do not float things. */
+  --shadow-card: 0 1px 2px rgb(23 23 26 / 0.04), 0 1px 3px rgb(23 23 26 / 0.06);
+  --shadow-raised: 0 2px 4px rgb(23 23 26 / 0.04), 0 8px 24px rgb(23 23 26 / 0.08);
+  --shadow-pop: 0 4px 8px rgb(23 23 26 / 0.06), 0 16px 40px rgb(23 23 26 / 0.12);
+
+  /* --- motion -------------------------------------------------------- */
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Tabular figures wherever a number changes in place. Without this the
+   score jitters horizontally as it counts up, which reads as instability
+   on the one number the whole page asks you to trust. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+html {
+  background: var(--color-canvas);
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Focus must be visible on every interactive element. Gate 1 §1.5 requires
+   the whole page to be operable by keyboard, and a checkbox you cannot see
+   the focus on is a checkbox you cannot use. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Reduced motion means values jump — they do not animate slowly. Anything
+   that conveys information through movement must still convey it here. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -18,3 +18,8 @@ dist/
 # OS
 .DS_Store
 .venv/
+
+# Browser-verification artefacts. Written by the Playwright MCP server on
+# every screenshot and snapshot — console logs, page trees, PNGs. Useful
+# while checking a change, never part of the deliverable.
+.playwright-mcp/

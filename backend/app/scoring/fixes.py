@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable
 
 from .grades import grade_for
-from .pricing import DEFAULT_BAND, DEFAULT_LIMIT, Premium, RevenueBand, annual_saving, premium_for
+from .pricing import DEFAULT_BAND, Premium, RevenueBand, annual_saving, premium_for
 from .rubric import ScoreResult, score
 
 # Effort strings are rendered verbatim in the UI and must come from this
@@ -198,7 +198,7 @@ def build(
     current: ScoreResult,
     *,
     revenue_band: RevenueBand = DEFAULT_BAND,
-    limit: int = DEFAULT_LIMIT,
+    limit: int | None = None,        # None -> the band's recommended cover
     data_type: str | None = None,
 ) -> tuple[list[Fix], dict[str, Any]]:
     """Return (fixes worth doing, the all-fixed summary).

@@ -33,6 +33,10 @@ conservative option. estimated_size_band drives pricing — if the page gives no
 headcount signal, infer from customer logos, office locations, and team pages,
 and prefer the smaller band.
 
+Use "500+" only for a company that is evidently large: a household name, a
+listed entity, many offices, or millions of stated customers. It selects a
+materially higher premium band, so it needs evidence, not impression.
+
 what_they_do must be one plain sentence a non-technical person would understand.
 Do not repeat the company's own marketing language back.
 

@@ -17,7 +17,10 @@ BusinessModel = Literal[
     "B2B_SaaS", "B2C", "Marketplace", "Fintech", "Healthtech", "Services", "Other"
 ]
 DataType = Literal["PII", "PHI", "payment_card", "financial", "biometric", "none_sensitive"]
-SizeBand = Literal["1-10", "11-50", "51-200", "200+"]
+# "500+" was added with rate card v1.1. Without it every company above
+# 200 people — a 250-person startup and a listed broker alike — landed
+# in the same revenue band and got the same premium.
+SizeBand = Literal["1-10", "11-50", "51-200", "200+", "500+"]
 
 # Rendered verbatim in the UI, so the model may not invent a seventh value.
 Effort = Literal["15 min", "30 min", "1 hr", "2 hrs", "1 day", "1 week"]

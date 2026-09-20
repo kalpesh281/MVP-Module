@@ -20,7 +20,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 # `findings` + `rubric_version` alone. Never mutate a rubric in place;
 # publish v1.1 and leave v1.0 documents untouched.
 RUBRIC_VERSION = "v1.0"
-RATE_VERSION = "v1.0"
+RATE_VERSION = "v1.1"
 
 # --- identity ------------------------------------------------------------
 USER_AGENT = os.getenv(

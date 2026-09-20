@@ -38,6 +38,7 @@ from .scanner import runner
 from .scanner.base import CheckResult
 from .scoring import (
     band_for_headcount,
+    limit_for_band,
     build_fixes,
     premium_for,
     premium_table,
@@ -143,8 +144,12 @@ async def run(domain: str, *, use_cache: bool = True) -> AsyncIterator[dict[str,
         yield {"type": "profile", **profile.model_dump()}
 
     band = band_for_headcount(profile.estimated_size_band if profile else None)
-    premium = premium_for(scored.grade, band)
-    fixes, combined = build_fixes(findings, scored, revenue_band=band)
+    # The cover amount follows the band. It used to be fixed at ₹5 Cr for
+    # everyone, which priced a large company's policy as a small one's and
+    # made the two look comparable on screen.
+    limit = limit_for_band(band)
+    premium = premium_for(scored.grade, band, limit)
+    fixes, combined = build_fixes(findings, scored, revenue_band=band, limit=limit)
     good = strengths(results)
 
     # --- explanation half: prose only ------------------------------------
@@ -169,7 +174,7 @@ async def run(domain: str, *, use_cache: bool = True) -> AsyncIterator[dict[str,
             prose = ai.report.static(scored, fixes, good)
 
     scan_id = store.new_scan_id()
-    table = premium_table(band)
+    table = premium_table(band, limit)
     duration_ms = int((time.monotonic() - started) * 1000)
 
     payload: dict[str, Any] = {

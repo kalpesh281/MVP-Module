@@ -1,14 +1,35 @@
-"""Premium estimation. Rate card v1.0.
+"""Premium estimation. Rate card v1.1.
 
 **Every figure in this module is a placeholder.** They are informed guesses
-at the Indian cyber market for a small SaaS company, not insurer-validated
-rates. They must be replaced with a partner insurer's rates before anything
-here is presented as a quote rather than an estimate.
+at the Indian cyber market, not insurer-validated rates. They must be
+replaced with a partner insurer's rates before anything here is presented
+as a quote rather than an estimate.
 
 That is not a disclaimer to bury. Every surface that renders these numbers
-says "estimated", and `defending_the_score` gives the honest answer when a
-client asks where they came from: judgment, to be calibrated.
-docs/scoring-and-pricing.md section 4, docs/defending-the-score.md
+says "estimated", and docs/defending-the-premium.md gives the honest answer
+when a client asks where they came from.
+docs/scoring-and-pricing.md section 4
+
+Sources the bands were sanity-checked against, 2026-09-20. None is a rate
+card; all are published ranges, which is the best available without an
+insurer partner:
+
+  - Mitigata, "Cyber Insurance Cost in India" — ₹12,000–₹90,000 a year for
+    small businesses; ~₹2 L for ₹1 Cr of comprehensive cover across all
+    sizes.  https://mitigata.com/blog/cyber-insurance-cost-india/
+  - IRDAI annual handbook — aggregate miscellaneous-lines premium. Useful
+    for direction, not for rating one company.
+  - Cyentia IRIS / CISA cost-of-incident study — loss severity by company
+    size. US-weighted, so directional only.
+
+**Deliberately only two inputs: grade and revenue band.** We hold profile
+data that a real underwriter would load for — industry, data types, DPDP
+applicability — and do not apply it. Each one is inferred by a model from
+a homepage, and "our AI decided you are fintech, so you pay 30% more" is
+the one sentence in this product that cannot be defended in a room. A
+coarse number with a traceable derivation beats a precise one with an
+unexplainable one. Narrowing the range is what the Tier 1 questions are
+for, and those are asked *after* the report has already been given.
 
 Like the rubric, this is pure arithmetic over a published table. No model
 is ever asked for a price.
@@ -21,7 +42,7 @@ from typing import Any, Literal
 
 from ..config import RATE_VERSION
 
-RevenueBand = Literal["under_5cr", "5_25cr", "25_100cr"]
+RevenueBand = Literal["under_5cr", "5_25cr", "25_100cr", "over_100cr"]
 
 CURRENCY = "INR"
 
@@ -54,13 +75,43 @@ BASE_TABLE: dict[RevenueBand, dict[str, tuple[int, int] | None]] = {
         "D": (340_000, 450_000),
         "F": None,
     },
+    # Added in rate card v1.1. Before it existed a company of any size
+    # above ₹100 Cr was priced in the band below, so a listed broker and a
+    # 200-person startup returned the same premium — visibly wrong to
+    # anyone who knows the company, which is every client demo.
+    "over_100cr": {
+        "A": (260_000, 350_000),
+        "B": (350_000, 480_000),
+        "C": (500_000, 700_000),
+        "D": (740_000, 980_000),
+        "F": None,
+    },
 }
 
 BAND_LABEL: dict[RevenueBand, str] = {
     "under_5cr": "under ₹5 Cr revenue",
     "5_25cr": "₹5–25 Cr revenue",
     "25_100cr": "₹25–100 Cr revenue",
+    "over_100cr": "over ₹100 Cr revenue",
 }
+
+# The cover amount we quote against, per band. Previously every company
+# was priced at ₹5 Cr regardless of size — under-insuring a large company
+# and over-insuring a small one, while presenting both as comparable.
+#
+# These are starting points a broker would recognise, not a needs
+# analysis: that requires knowing their contract liability caps, which is
+# a Tier 1 question.
+RECOMMENDED_LIMIT: dict[RevenueBand, int] = {
+    "under_5cr": 10_000_000,     # ₹1 Cr
+    "5_25cr": 50_000_000,        # ₹5 Cr
+    "25_100cr": 50_000_000,      # ₹5 Cr
+    "over_100cr": 250_000_000,   # ₹25 Cr
+}
+
+
+def limit_for_band(revenue_band: RevenueBand) -> int:
+    return RECOMMENDED_LIMIT.get(revenue_band, DEFAULT_LIMIT)
 
 # Limit (rupees) -> multiplier on the ₹5 Cr base.
 LIMIT_MULTIPLIERS: dict[int, float] = {
@@ -70,6 +121,22 @@ LIMIT_MULTIPLIERS: dict[int, float] = {
     100_000_000: 1.55,    # ₹10 Cr
     250_000_000: 2.60,    # ₹25 Cr
 }
+
+LIMIT_LABEL: dict[int, str] = {
+    10_000_000: "₹1 Cr",
+    20_000_000: "₹2 Cr",
+    50_000_000: "₹5 Cr",
+    100_000_000: "₹10 Cr",
+    250_000_000: "₹25 Cr",
+}
+
+
+def limit_label(limit: int) -> str:
+    """The UI used to hardcode the words "₹5 Cr of cover" in its markup,
+    which stayed put when the number behind it changed. The label ships
+    with the figure now."""
+    return LIMIT_LABEL.get(limit, f"₹{limit:,}")
+
 
 # Tier 1+ only. Apply the single highest applicable multiplier, never a
 # product of several — compounding them produces numbers no underwriter
@@ -91,6 +158,7 @@ HEADCOUNT_TO_BAND: dict[str, RevenueBand] = {
     "11-50": "under_5cr",
     "51-200": "5_25cr",
     "200+": "25_100cr",
+    "500+": "over_100cr",
 }
 DEFAULT_BAND: RevenueBand = "under_5cr"
 
@@ -132,14 +200,20 @@ def _round(amount: float) -> int:
 def premium_for(
     grade: str | None,
     revenue_band: RevenueBand = DEFAULT_BAND,
-    limit: int = DEFAULT_LIMIT,
+    limit: int | None = None,
     data_type: str | None = None,
 ) -> Premium:
     """Estimated annual premium. `data_type` is Tier 1+; omit it at Tier 0.
 
+    `limit=None` means the band's recommended cover. That is the same rule
+    in `premium_table` and in `fixes.build`, deliberately: when one of them
+    defaulted to a fixed ₹5 Cr and another to the band's cover, the card
+    and the simulator beside it could quietly price different policies.
+
     A suppressed grade (too many inconclusive checks) prices as a referral
     rather than defaulting to something cheerful.
     """
+    limit = limit_for_band(revenue_band) if limit is None else limit
     table = BASE_TABLE[revenue_band]
     if grade is None or table.get(grade) is None:
         return Premium(low=None, high=None, limit=limit, referred=True)
@@ -154,7 +228,7 @@ def premium_for(
 
 def premium_table(
     revenue_band: RevenueBand = DEFAULT_BAND,
-    limit: int = DEFAULT_LIMIT,
+    limit: int | None = None,
     data_type: str | None = None,
 ) -> dict[str, Any]:
     """Every grade priced at this band and limit.
@@ -164,10 +238,12 @@ def premium_table(
     "what if I fixed this" and the answer is where the insight dies.
     docs/frontend.md simulate.js
     """
+    limit = limit_for_band(revenue_band) if limit is None else limit
     return {
         "revenue_band": revenue_band,
         "revenue_band_label": BAND_LABEL[revenue_band],
         "limit": limit,
+        "limit_label": limit_label(limit),
         "currency": CURRENCY,
         "rate_version": RATE_VERSION,
         "by_grade": {

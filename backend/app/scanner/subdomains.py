@@ -386,8 +386,15 @@ async def run(domain: str, sans: list[str] | None = None) -> CheckResult:
     if risky:
         detail = (f"{len(risky)} host{'s' if len(risky) != 1 else ''} reachable "
                   f"that look internal — {names}")
-    else:
+    elif live:
         detail = f"{len(live)} reachable, with configuration issues"
+    else:
+        # Sprawl is counted from hostnames on record, not from live hosts,
+        # so it can fire when nothing answered a probe. "0 reachable, with
+        # configuration issues" is then both confusing and wrong — it
+        # sounds like a fault in something that is not there.
+        detail = (f"{total_found} public hostnames on record — more than most "
+                  f"teams are tracking")
 
     return CheckResult(
         id="subdomains", label="Public subdomains",

@@ -14,6 +14,8 @@ from .pricing import (
     Premium,
     annual_saving,
     band_for_headcount,
+    limit_for_band,
+    limit_label,
     premium_for,
     premium_table,
 )
@@ -23,6 +25,7 @@ __all__ = [
     "CHECK_POINTS", "RULE_POINTS", "RubricError", "ScoreResult", "score",
     "grade_for", "points_to_next_grade", "GRADE_SUMMARY",
     "Premium", "premium_for", "premium_table", "annual_saving",
-    "band_for_headcount", "DEFAULT_BAND", "DEFAULT_LIMIT",
+    "band_for_headcount", "limit_for_band", "limit_label",
+    "DEFAULT_BAND", "DEFAULT_LIMIT",
     "Fix", "build_fixes", "strengths",
 ]
