@@ -5,10 +5,15 @@ It is the bottom of the dependency graph.
 """
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Explicit path, not bare load_dotenv(). The bare call locates .env by
+# walking the caller's stack frames, which silently finds nothing when the
+# process is started from a different working directory — or from stdin.
+# backend/app/config.py -> backend/.env
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 # --- versions ------------------------------------------------------------
 # Stored on every scan document. A score must be reproducible from
@@ -43,6 +48,60 @@ SCAN_HARD_LIMIT = 30.0
 
 # Minimum time the scanning screen stays up. Instant results read as fake.
 MIN_SCAN_DWELL = 4.0
+
+# --- AI models -----------------------------------------------------------
+# CHANGE MODEL NAMES HERE. Nothing else needs editing.
+# Every provider below speaks the OpenAI chat-completions API, so switching
+# is a base URL and a key. Verified live against this account's own keys on
+# 2026-09-20 — not copied from documentation.
+
+AI_ENDPOINTS = {
+    "groq":       "https://api.groq.com/openai/v1",
+    "openrouter": "https://openrouter.ai/api/v1",
+    "openai":     "https://api.openai.com/v1",
+}
+
+# key: a short alias you use in the chains below and in PROVIDER_* overrides
+# value: (provider, model id, env var holding the key)
+AI_MODELS = {
+    # Groq — FREE. 30 req/min, 1,000 req/day, 200K tokens/day.
+    # The token cap binds first: roughly 60-80 scans/day.
+    "groq-large":  ("groq", "openai/gpt-oss-120b", "GROQ_API_KEY"),
+    "groq-small":  ("groq", "openai/gpt-oss-20b",  "GROQ_API_KEY"),
+    "groq-qwen":   ("groq", "qwen/qwen3.8-27b",    "GROQ_API_KEY"),
+
+    # OpenRouter — FREE. 20 req/min, 50 req/day on :free models.
+    # Individually flaky (503/429 are common); good as a second choice.
+    "or-large":    ("openrouter", "nvidia/nemotron-3-super-120b-a12b:free", "OPENROUTER_API_KEY"),
+    "or-mid":      ("openrouter", "qwen/qwen3.8-27b:free",                  "OPENROUTER_API_KEY"),
+
+    # OpenAI — PAID. Activates automatically once the account has credit.
+    "gpt-mini":    ("openai", "gpt-4.1-mini", "OPENAI_API_KEY"),
+    "gpt-nano":    ("openai", "gpt-4.1-nano", "OPENAI_API_KEY"),
+    "gpt-5":       ("openai", "gpt-5",        "OPENAI_API_KEY"),
+}
+
+# Tried in order until one returns a valid object. A model whose key is
+# unset is skipped silently, so the same chain works on any machine.
+AI_CHAINS = {
+    # Call 2 — the product's voice and its judgment. Best available first.
+    "report":   ["gpt-mini", "groq-large", "or-large", "groq-small"],
+    # Call 1 — structured extraction from a webpage. Runs on every scan,
+    # so it leads with the cheapest model that can do the job.
+    "classify": ["groq-small", "groq-large", "or-mid", "gpt-nano"],
+    # Call 3 — cheap, cached, low stakes.
+    "qa":       ["groq-small", "groq-large", "or-mid"],
+}
+
+# Aliases whose provider may log or train on submitted content. These must
+# never appear in a chain that can carry contract text, uploaded policies,
+# or connector data. Tier 0 sends only a public webpage, so free models are
+# fine there — but the Tier 5 contract parser must use a paid endpoint.
+# docs/ai-framework.md section 8
+AI_TRAINS_ON_INPUT = {"or-large", "or-mid"}   # OpenRouter :free variants
+
+AI_TIMEOUT = float(os.getenv("AI_TIMEOUT", "60"))
+AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "4000"))
 
 # --- rate limiting -------------------------------------------------------
 RATE_LIMIT_PER_IP = 10          # scans per hour
