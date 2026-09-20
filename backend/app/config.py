@@ -36,13 +36,26 @@ HIBP_API_KEY = os.getenv("HIBP_API_KEY") or None
 SCAN_CACHE_HOURS = int(os.getenv("SCAN_CACHE_HOURS", "6"))
 
 # --- timing --------------------------------------------------------------
-# Per-check budgets, seconds. docs/scan-checks.md
+# Per-check budgets, seconds. Measured 2026-09-20, not guessed:
+#
+#   email_auth  ~2.1s   three concurrent DNS lookups plus SPF include walk
+#   tls         ~0.2s   fast when healthy; the 4s probe budget is separate
+#   headers     ~0.2s   one GET
+#   creds       ~0.6s   one HIBP call
+#   subdomains  9-20s  crt.sh is 4-8s AND unreliable enough to need a
+#                       retry, then a probe sweep over up to 40 hosts
+#
+# A budget must exceed the sum of the check's own internal timeouts, or the
+# runner kills it and throws away work that had already succeeded. That is
+# how `subdomains` was silently returning `inconclusive` on every scan: its
+# crt.sh timeout was 8s and its budget was also 8s, leaving nothing for the
+# probing that follows.
 TIMEOUTS = {
-    "email_auth": 3.0,
-    "tls": 5.0,
-    "headers": 6.0,
-    "creds": 8.0,
-    "subdomains": 8.0,
+    "email_auth": 5.0,
+    "tls": 10.0,        # handshake 5s + a 4s shared budget for the two probes
+    "headers": 8.0,
+    "creds": 10.0,
+    "subdomains": 24.0,  # crt.sh 8s x2 with a 1s gap, then the probe sweep
 }
 SCAN_HARD_LIMIT = 30.0
 
@@ -58,49 +71,91 @@ MIN_SCAN_DWELL = 4.0
 AI_ENDPOINTS = {
     "groq":       "https://api.groq.com/openai/v1",
     "openrouter": "https://openrouter.ai/api/v1",
-    "openai":     "https://api.openai.com/v1",
+    "openai":     "https://api.openai.com/v1",   # unused — no working key
 }
 
-# key: a short alias you use in the chains below and in PROVIDER_* overrides
+# key:   short alias, used in AI_CHAINS and in PROVIDER_* env overrides
 # value: (provider, model id, env var holding the key)
+#
+# Every model below was probed live on 2026-09-20 and confirmed to return
+# valid JSON. Models that 400/403/429'd, returned empty content, or leaked
+# their reasoning into the content field are listed at the bottom as
+# rejected, so nobody re-adds them.
 AI_MODELS = {
-    # Groq — FREE. 30 req/min, 1,000 req/day, 200K tokens/day.
-    # The token cap binds first: roughly 60-80 scans/day.
+    # --- Groq: FREE, fast, reliable. Primary for everything. -------------
+    # 30 req/min, 1,000 req/day, 200K tokens/day. The token cap binds
+    # first: roughly 60-80 scans/day.
     "groq-large":  ("groq", "openai/gpt-oss-120b", "GROQ_API_KEY"),
     "groq-small":  ("groq", "openai/gpt-oss-20b",  "GROQ_API_KEY"),
     "groq-qwen":   ("groq", "qwen/qwen3.8-27b",    "GROQ_API_KEY"),
 
-    # OpenRouter — FREE. 20 req/min, 50 req/day on :free models.
-    # Individually flaky (503/429 are common); good as a second choice.
-    "or-large":    ("openrouter", "nvidia/nemotron-3-super-120b-a12b:free", "OPENROUTER_API_KEY"),
-    "or-mid":      ("openrouter", "qwen/qwen3.8-27b:free",                  "OPENROUTER_API_KEY"),
+    # --- OpenRouter: FREE, flaky individually, good as fallback ----------
+    # 20 req/min, 50 req/day across :free models. Any single model may
+    # 429 or 503 at any moment, which is exactly why there are several.
+    "or-ultra":    ("openrouter", "nvidia/nemotron-3-ultra-550b-a55b:free", "OPENROUTER_API_KEY"),
+    "or-super":    ("openrouter", "nvidia/nemotron-3-super-120b-a12b:free", "OPENROUTER_API_KEY"),
+    "or-deepseek": ("openrouter", "deepseek/deepseek-v4-flash-0731:free",   "OPENROUTER_API_KEY"),
+    "or-nex-pro":  ("openrouter", "nex-agi/nex-n2.5-pro:free",              "OPENROUTER_API_KEY"),
+    "or-nex-mini": ("openrouter", "nex-agi/nex-n2.5-mini:free",             "OPENROUTER_API_KEY"),
+    "or-dots":     ("openrouter", "dots-studio/dots-3-note-preview:free",   "OPENROUTER_API_KEY"),
 
-    # OpenAI — PAID. Activates automatically once the account has credit.
-    "gpt-mini":    ("openai", "gpt-4.1-mini", "OPENAI_API_KEY"),
-    "gpt-nano":    ("openai", "gpt-4.1-nano", "OPENAI_API_KEY"),
-    "gpt-5":       ("openai", "gpt-5",        "OPENAI_API_KEY"),
+    # --- OpenAI: configured, NOT IN USE ----------------------------------
+    # The account's key returns 401 and the previous one returned 429
+    # insufficient_quota. Add a valid, funded key and put "gpt-luna" at the
+    # front of the "report" chain below — no other change is needed.
+    "gpt-luna":    ("openai", "gpt-5.6-luna", "OPENAI_API_KEY"),
+    "gpt-mini":    ("openai", "gpt-5.4-mini", "OPENAI_API_KEY"),
+    "gpt-nano":    ("openai", "gpt-5.4-nano", "OPENAI_API_KEY"),
 }
+
+# Rejected on 2026-09-20, with the reason. Do not re-add without retesting.
+#   qwen/qwen3.8-27b:free               429  rate limited
+#   z-ai/glm-5.2:free                   429  and returns empty content
+#   google/gemma-4-31b-it:free          429
+#   google/gemma-4-26b-a4b-it:free      429
+#   poolside/laguna-s-2.1:free          429
+#   poolside/laguna-xs-2.1:free         empty content (reasoning model)
+#   thinkingmachines/inkling*:free      403  not available on this account
+#   inclusionai/ling-3.0-*:free         400  rejects response_format
+#   nvidia/nemotron-3.5-lightning:free  leaks chain-of-thought into content
+#   nvidia/nemotron-3.5-content-safety  a safety classifier, not a chat model
+#   cohere/north-mini-code:free         code-specialised, wrong tool here
 
 # Tried in order until one returns a valid object. A model whose key is
 # unset is skipped silently, so the same chain works on any machine.
+#
+# Groq leads every chain because it is the only provider here that is
+# reliable request-to-request. OpenRouter follows with two different
+# vendors behind it, so one provider having a bad minute is survivable.
 AI_CHAINS = {
-    # Call 2 — the product's voice and its judgment. Best available first.
-    "report":   ["gpt-mini", "groq-large", "or-large", "groq-small"],
+    # Call 2 — the product's voice and its judgment.
+    "report":   ["groq-large", "or-ultra", "or-super", "groq-small"],
     # Call 1 — structured extraction from a webpage. Runs on every scan,
     # so it leads with the cheapest model that can do the job.
-    "classify": ["groq-small", "groq-large", "or-mid", "gpt-nano"],
+    "classify": ["groq-small", "groq-large", "or-deepseek", "or-nex-mini"],
     # Call 3 — cheap, cached, low stakes.
-    "qa":       ["groq-small", "groq-large", "or-mid"],
+    "qa":       ["groq-small", "or-deepseek", "groq-large"],
 }
 
 # Aliases whose provider may log or train on submitted content. These must
 # never appear in a chain that can carry contract text, uploaded policies,
 # or connector data. Tier 0 sends only a public webpage, so free models are
-# fine there — but the Tier 5 contract parser must use a paid endpoint.
+# fine there — but the Tier 5 contract parser needs a paid endpoint.
 # docs/ai-framework.md section 8
-AI_TRAINS_ON_INPUT = {"or-large", "or-mid"}   # OpenRouter :free variants
+AI_TRAINS_ON_INPUT = {"or-ultra", "or-super", "or-deepseek",
+                      "or-nex-pro", "or-nex-mini", "or-dots"}
 
-AI_TIMEOUT = float(os.getenv("AI_TIMEOUT", "60"))
+# Per-model timeout, seconds. Deliberately tight.
+#
+# Measured 2026-09-20: every model in AI_MODELS answers in 1.4-6.0s when
+# the provider is healthy. But free tiers queue, and one observed call to
+# nemotron-ultra took 75s — which would blow SCAN_HARD_LIMIT on its own.
+#
+# So: give a model roughly 3x its normal latency, then abandon it and try
+# the next one in the chain. Failing over to a working model in 20s beats
+# waiting 75s for a stalled one. Raise this only if failovers become common
+# on a healthy provider.
+AI_TIMEOUT = float(os.getenv("AI_TIMEOUT", "20"))
 AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "4000"))
 
 # --- rate limiting -------------------------------------------------------
@@ -144,6 +199,11 @@ SUBDOMAIN_RISK_PATTERNS = (
 )
 SUBDOMAIN_SPRAWL_THRESHOLD = 50
 SUBDOMAIN_MAX_PROBES = 40       # cap live-host probing so one scan cannot fan out
+
+# In-flight probes. Forty simultaneous TLS handshakes from one process
+# starve each other; healthy hosts then time out and were being reported
+# as plaintext-only. Eight keeps every handshake fast enough to be honest.
+SUBDOMAIN_PROBE_CONCURRENCY = 8
 
 # --- certificates --------------------------------------------------------
 TLS_EXPIRY_URGENT_DAYS = 14

@@ -1,10 +1,10 @@
-"""Run checks from the terminal, before any of the web layer exists.
+"""Run a full scan from the terminal, before any of the web layer exists.
 
     python -m app.cli zerodha.com
+    python -m app.cli zerodha.com --stream     # completion order, with timings
 
-This is the Day 1 checkpoint tool. It runs whatever checks are implemented
-and prints them, so the scanner can be verified against real domains long
-before there is an API to call.
+The Day 1 checkpoint tool. It drives the real orchestrator, so what you see
+here is exactly what the SSE endpoint will emit.
 """
 
 from __future__ import annotations
@@ -14,19 +14,22 @@ import sys
 import time
 
 from .domain import InvalidDomain, normalise
+from .scanner import runner
 from .scanner.base import CheckResult
 
 GLYPH = {"pass": "✓", "warn": "⚠", "fail": "✗", "inconclusive": "–"}
 
 
-def _print(result: CheckResult) -> None:
-    print(f"  {GLYPH.get(result.status, '?')}  {result.label:<24} {result.detail}")
+def _print(result: CheckResult, elapsed: float | None = None) -> None:
+    stamp = f"{elapsed:5.2f}s " if elapsed is not None else ""
+    pad = " " * len(stamp)
+    print(f"  {stamp}{GLYPH.get(result.status, '?')}  {result.label:<20} {result.detail}")
     for deduction in result.deductions:
-        note = f"  ({deduction.note})" if deduction.note else ""
-        print(f"       └─ {deduction.rule}{note}")
+        note = f"  · {deduction.note}" if deduction.note else ""
+        print(f"  {pad}     └─ {deduction.rule}{note}")
 
 
-async def main(raw: str) -> int:
+async def main(raw: str, stream: bool = False) -> int:
     try:
         domain = normalise(raw)
     except InvalidDomain as exc:
@@ -36,25 +39,21 @@ async def main(raw: str) -> int:
     print(f"\nChecking {domain}\n")
     started = time.monotonic()
 
-    from .scanner import creds, email_auth
-
-    checks = [("email_auth", email_auth.run), ("creds", creds.run)]
-
-    for name, fn in checks:
-        try:
-            results = await fn(domain)
-        except Exception as exc:                       # never fail the scan
-            print(f"  –  {name:<24} crashed: {exc}")
-            continue
-        for result in results if isinstance(results, list) else [results]:
+    if stream:
+        # Completion order — what the browser actually receives.
+        async for result in runner.run(domain):
+            _print(result, time.monotonic() - started)
+    else:
+        for result in await runner.run_all(domain):
             _print(result)
 
-    print(f"\n  {time.monotonic() - started:.2f}s\n")
+    print(f"\n  {time.monotonic() - started:.2f}s total\n")
     return 0
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("usage: python -m app.cli <domain>")
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if not args:
+        print("usage: python -m app.cli <domain> [--stream]")
         raise SystemExit(2)
-    raise SystemExit(asyncio.run(main(sys.argv[1])))
+    raise SystemExit(asyncio.run(main(args[0], "--stream" in sys.argv)))
