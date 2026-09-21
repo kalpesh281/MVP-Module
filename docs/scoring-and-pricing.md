@@ -1,6 +1,6 @@
 # Scoring and Pricing
 
-**Rubric version:** `v1.0`
+**Rubric version:** `v1.1`
 **Rate card version:** `v1.0`
 
 ---
@@ -169,7 +169,38 @@ score = 100 × (available_points − deductions) / available_points
 
 **Never grade a company well because a check failed to run.**
 
-If checks totalling **more than 25 points** are inconclusive, suppress the grade entirely and show a partial report explaining which checks could not complete.
+If checks totalling **more than 25 points** are inconclusive **because they failed to run**, suppress the grade entirely and show a partial report explaining which checks could not complete.
+
+### Which inconclusive points count — rubric v1.1
+
+Two kinds of "inconclusive" look identical in the output and are not the same thing:
+
+| | Example | Counts toward the 25? |
+|---|---|---|
+| **Structural** — cannot run at this tier, by design | `creds_accounts` needs the paid HIBP endpoint *and* domain verification. At Tier 0 we never have either. | **No** |
+| **Unexpected** — was supposed to run and did not | the certificate transparency lookup timed out | **Yes** |
+
+**Why this changed.** Under v1.0 both counted. The structural
+`creds_accounts` gap is 12 points and is inconclusive on *every* Tier 0
+scan, so it permanently spent 12 of the 25 and left 13 — less than the
+subdomain check is worth on its own (23). Any certificate transparency
+outage, on any domain, blanked the grade.
+
+Seen live: a company passed six checks with nothing wrong, scored
+**100/100**, and the page said *"No grade for this domain"* because a
+third-party server had a bad second.
+
+A gap that is missing on every single scan is not news, and it must not
+eat the budget reserved for things going wrong. The budget now measures
+what it was always trying to measure: **how much we failed to see today.**
+
+**This is not a permanent exemption.** A check stops being structural the
+moment any real result arrives for it — including an inconclusive one. The
+day the HIBP key lands, a `creds_accounts` timeout is an outage like any
+other and counts again.
+
+**What did not change:** structural points still leave the denominator.
+A Tier 0 scan is still scored over **88**, not 100.
 
 ---
 

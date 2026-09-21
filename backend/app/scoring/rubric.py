@@ -120,8 +120,24 @@ RULE_POINTS: dict[str, tuple[int, str]] = {
     "surface.sprawl":            (3, "subdomains"),
 }
 
-# Above this many inconclusive points the grade is meaningless and we say
-# so rather than publishing a letter we cannot stand behind.
+# Above this many **unexpectedly** inconclusive points the grade is
+# meaningless and we say so rather than publishing a letter we cannot
+# stand behind.
+#
+# "Unexpectedly" is rubric v1.1 and it is the whole of the change. Under
+# v1.0 this counted every inconclusive point, including the structural
+# `creds_accounts` gap that is inconclusive on every Tier 0 scan by
+# design. That gap permanently spent 12 of the 25, leaving 13 — less than
+# the subdomain check is worth on its own (23). So any certificate
+# transparency outage, on any domain, blanked the grade.
+#
+# Observed live: a company passed six checks with nothing wrong, scored
+# 100/100, and the page said "No grade for this domain" because a third
+# party server had a bad second.
+#
+# A gap that is missing on every single scan is not news and must not eat
+# the budget reserved for things going wrong. The budget now measures what
+# it was always trying to measure: how much we failed to see *today*.
 # docs/scoring-and-pricing.md section 3
 INCONCLUSIVE_SUPPRESS_ABOVE = 25
 
@@ -157,6 +173,12 @@ class ScoreResult:
     available_points: int
     deductions: int
     inconclusive_points: int
+    # Of `inconclusive_points`, the part that is NOT the structural Tier 0
+    # gap — i.e. checks that were supposed to run and did not. This is the
+    # number suppression is judged on. Kept separate rather than replacing
+    # `inconclusive_points`, because that one is what the page means by
+    # "scored over 88 measurable points" and it has not changed.
+    unexpected_inconclusive_points: int
     grade_suppressed: bool
     categories: list[CategoryScore]
     rubric_version: str = RUBRIC_VERSION
@@ -168,6 +190,7 @@ class ScoreResult:
             "available_points": self.available_points,
             "deductions": self.deductions,
             "inconclusive_points": self.inconclusive_points,
+            "unexpected_inconclusive_points": self.unexpected_inconclusive_points,
             "grade_suppressed": self.grade_suppressed,
             "rubric_version": self.rubric_version,
             "breakdown": [
@@ -240,12 +263,20 @@ def score(
     raw: dict[str, int] = {cid: 0 for cid in CHECK_POINTS}
     rules_hit: dict[str, list[str]] = {cid: [] for cid in CHECK_POINTS}
     inconclusive: dict[str, str] = dict(ALWAYS_INCONCLUSIVE)
+    # Which inconclusive checks are the structural Tier 0 gap rather than
+    # something that went wrong. A check drops out of this set the moment
+    # any real result arrives for it — including an inconclusive one,
+    # because a scanner that ran and timed out is an outage, not
+    # structure. That is what makes this hold at Tier 2: the day the HIBP
+    # key lands, `creds_accounts` starts reporting and stops being free.
+    structural: set[str] = set(ALWAYS_INCONCLUSIVE)
     seen: set[str] = set()
 
     for record in records:
         check_id = record.get("id", "")
         if check_id in CHECK_POINTS:
             seen.add(check_id)
+            structural.discard(check_id)
             # A real result overrides the ALWAYS_INCONCLUSIVE default —
             # that is how the keyed half switches on at Tier 2 with no
             # change to this module.
@@ -278,10 +309,13 @@ def score(
     available = 0
     deducted_total = 0
     inconclusive_points = 0
+    unexpected_inconclusive_points = 0
 
     for cid, maximum in CHECK_POINTS.items():
         if cid in inconclusive:
             inconclusive_points += maximum
+            if cid not in structural:
+                unexpected_inconclusive_points += maximum
             categories.append(CategoryScore(
                 check_id=cid, max_points=maximum, deducted=0, raw_deducted=0,
                 inconclusive=True, reason=inconclusive[cid],
@@ -299,7 +333,9 @@ def score(
         # Every check failed. There is no honest number to show.
         return ScoreResult(
             score=0, grade=None, available_points=0, deductions=0,
-            inconclusive_points=inconclusive_points, grade_suppressed=True,
+            inconclusive_points=inconclusive_points,
+            unexpected_inconclusive_points=unexpected_inconclusive_points,
+            grade_suppressed=True,
             categories=categories,
         )
 
@@ -308,13 +344,16 @@ def score(
     value = 100.0 * (available - deducted_total) / available
     final = max(0, min(100, _round_half_up(value)))
 
-    suppressed = inconclusive_points > INCONCLUSIVE_SUPPRESS_ABOVE
+    # v1.1: judged on the unexpected points, not the total. See the note
+    # on INCONCLUSIVE_SUPPRESS_ABOVE.
+    suppressed = unexpected_inconclusive_points > INCONCLUSIVE_SUPPRESS_ABOVE
     return ScoreResult(
         score=final,
         grade=None if suppressed else grade_for(final),
         available_points=available,
         deductions=deducted_total,
         inconclusive_points=inconclusive_points,
+        unexpected_inconclusive_points=unexpected_inconclusive_points,
         grade_suppressed=suppressed,
         categories=categories,
     )

@@ -47,7 +47,16 @@ export default function FixRow({ fix }) {
               <TrendingUp className="size-3.5" aria-hidden="true" />
               <span className="tabular-nums">+{fix.score_delta}</span>{' '}
               {fix.score_delta === 1 ? 'point' : 'points'}
-              {fix.grade_if_fixed && <> → grade {fix.grade_if_fixed}</>}
+              {/* No "→ grade X" here.
+                  On a D-graded domain the first two rows both read
+                  "+6 points → grade D" and "+4 points → grade D" — the
+                  letter is unchanged because neither fix alone crosses a
+                  band, so the line spent its width saying nothing moved.
+                  The points are the honest per-fix unit; the grade is a
+                  property of the whole set, and the gauge and the rail
+                  already show it moving as boxes are ticked.
+                  `grade_if_fixed` stays in the payload; it just is not
+                  rendered per row. */}
             </span>
             <span className="inline-flex items-center gap-1">
               <Clock className="size-3.5" aria-hidden="true" />

@@ -19,7 +19,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 # Stored on every scan document. A score must be reproducible from
 # `findings` + `rubric_version` alone. Never mutate a rubric in place;
 # publish v1.1 and leave v1.0 documents untouched.
-RUBRIC_VERSION = "v1.0"
+RUBRIC_VERSION = "v1.1"
 RATE_VERSION = "v1.1"
 
 # --- identity ------------------------------------------------------------

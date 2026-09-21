@@ -43,7 +43,9 @@ Email authentication is 30 points across its three rows. Account exposure's 12 p
 
 **3. Every rule has a fixed value.** Point at a finding: *"No DMARC record, minus 18. That number is in the published rubric. It isn't calculated per company and it isn't negotiable."*
 
-**4. What we can't check doesn't count against you.** If a data source is down, that check is marked inconclusive and its points come out of the denominator — we don't score you zero for our outage. If more than 25 points are unavailable, **we don't show a grade at all.**
+**4. What we can't check doesn't count against you.** If a data source is down, that check is marked inconclusive and its points come out of the denominator — we don't score you zero for our outage. If more than 25 points **failed to run**, we don't show a grade at all.
+
+Note the wording: *failed to run*. Employee account exposure (12 points) can never run at Tier 0 — it needs a paid endpoint and proof you control the domain — so it is inconclusive on every scan by design. That known gap does not count toward the 25; only things that actually broke do. Under rubric v1.0 it did count, which meant one slow certificate lookup was enough to blank the grade of a company with nothing wrong. Fixed in v1.1.
 
 **5. The letter is a band.** A 85–100, B 70–84, C 55–69, D 40–54, F 0–39.
 

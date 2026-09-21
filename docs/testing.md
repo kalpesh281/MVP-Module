@@ -119,15 +119,20 @@ Run on a real domain, then on `example.com`, then on a domain you know is clean.
 
 ## 1.6 Manual — data and safety
 
-- [ ] `git grep -iE "mongodb\+srv://[^<]"` returns **nothing** — the only
+Re-verified 2026-09-20 except where noted.
+
+- [x] `git grep -iE "mongodb\+srv://[^<]"` returns **nothing** — the only
       matches anywhere are `<user>:<password>` templates in `.env.example`
       and `docs/database.md`. Matching the bare scheme flags those templates
       and this checklist line itself, which reads as a leak and is not one.
-- [ ] Trigger a DB error deliberately → the connection string does **not** appear in the response or the logs
-- [ ] A stored scan document contains `rubric_version` and `rate_version`
-- [ ] Re-running `score()` on a stored document's `findings` reproduces its stored grade
-- [ ] The outbound User-Agent is truthful and carries a contact URL
-- [ ] No check performs a port scan, a probe, a fuzz, or a credential test
+      *(`.env.example` used `USER:PASSWORD`, not the angle-bracket form this
+      line describes, so the check flagged it. The template now matches the
+      convention and the grep is clean.)*
+- [ ] Trigger a DB error deliberately → the connection string does **not** appear in the response or the logs — **not re-verified today**
+- [x] A stored scan document contains `rubric_version` and `rate_version` — `v1.0` / `v1.1` on the live `perseus.de` document
+- [x] Re-running `score()` on a stored document's `findings` reproduces its stored grade — stored `45 D over 88`, recomputed `45 D over 88`
+- [x] The outbound User-Agent is truthful and carries a contact URL — `CyberScorecard/0.1 (+https://github.com/kalpesh281)`. Swap the URL for a company domain at launch.
+- [x] No check performs a port scan, a probe, a fuzz, or a credential test — no `nmap`, `masscan`, `socket.connect`, or `shodan` anywhere in `backend/app/`
 
 ## GATE 1 sign-off
 

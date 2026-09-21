@@ -1,9 +1,30 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck } from 'lucide-react';
-import InfoTip from '../Extra/InfoTip';
+import { ScrollText, ShieldCheck } from 'lucide-react';
 
+import Modal from '../Extra/Modal';
+import ProvenanceContent from '../Methodology/ProvenanceContent';
 
+/**
+ * The page frame's header. Rendered by `Layout`, so everything here is on
+ * every route.
+ *
+ * The dialog holds the provenance — what is a published standard, what we
+ * traced to a source document, and what is our own judgement — and
+ * nothing else. Deliberately not the whole methodology: the rate card
+ * tables belong on `/methodology`, which is the URL you paste into an
+ * email to a CTO. The question this button answers is the one a reader
+ * has while mid-report — "where did 18 points come from?" — and routing
+ * them away to answer it costs them their place.
+ *
+ * One trigger, on every route and every screen width. There used to be a
+ * "Rule-based scoring" badge here with the same explanation behind an
+ * info tip; it was removed once the dialog existed. Two entry points to
+ * one document is a choice the reader has to make before they can read
+ * anything, and the badge was hidden on phones anyway.
+ */
 export default function Header() {
+  const [methodologyOpen, setMethodologyOpen] = useState(false);
   return (
     <header className='sticky top-0 z-40 bg-canvas/85 backdrop-blur-md'>
       <div className='flex w-full items-center justify-between gap-4 px-5 py-3.5 sm:px-8'>
@@ -19,7 +40,7 @@ export default function Header() {
           </span>
           <span className='flex flex-col leading-none'>
             <span className='text-[15px] font-semibold tracking-tight'>
-              Scorecard
+              Cyber Scorecard
             </span>
             <span className='mt-0.5 hidden text-xs text-ink-faint sm:block'>
               Cyber liability, priced on what an insurer can see
@@ -27,23 +48,36 @@ export default function Header() {
           </span>
         </Link>
 
-        <span className='hidden shrink-0 items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs text-ink-faint sm:flex'>
-          Rule-based scoring
-          <InfoTip label='What rule-based scoring means' align='right'>
-            Every point on your grade comes from a published table of rules — a
-            missing DMARC record costs 18 points, a missing content security
-            policy costs 4. No model decides your score, which is why the same
-            domain scanned twice gives the same grade, and why we can show you
-            the exact rule behind any finding you disagree with.
-            <Link
-              to='/methodology'
-              className='mt-2 block font-medium text-accent underline-offset-2 hover:underline'
+        <div className='flex shrink-0 items-center gap-2'>
+          <button
+              type='button'
+              onClick={() => setMethodologyOpen(true)}
+              aria-haspopup='dialog'
+              aria-expanded={methodologyOpen}
+              aria-label='Where our numbers come from'
+              className='inline-flex items-center gap-1.5 rounded-full border border-line
+                         px-3 py-1.5 text-xs font-medium text-ink-muted transition-colors
+                         hover:border-accent/40 hover:bg-raised hover:text-ink'
             >
-              Read the rules and the rate card
-            </Link>
-          </InfoTip>
-        </span>
+              <ScrollText className='size-4' aria-hidden='true' />
+              {/* Label on desktop, icon alone on a phone. This project has
+                  no `xs` breakpoint, so `sm` is the only honest one to
+                  branch on — the button keeps its aria-label either way. */}
+              <span className='hidden sm:inline' aria-hidden='true'>Sources</span>
+          </button>
+        </div>
       </div>
+
+      <Modal
+        open={methodologyOpen}
+        onClose={() => setMethodologyOpen(false)}
+        title='Where our numbers come from'
+        description='What is a published standard, what we traced to a source document, and what is our own judgement.'
+      >
+        {/* Mounted only while open, so no page pays for a fetch nobody
+            asked for. */}
+        {methodologyOpen && <ProvenanceContent />}
+      </Modal>
     </header>
   );
 }
