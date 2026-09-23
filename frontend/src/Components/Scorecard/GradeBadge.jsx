@@ -15,7 +15,7 @@ export default function GradeBadge({ grade, score, availablePoints, suppressed }
   if (suppressed || !grade) {
     return (
       <div className="rounded-xl border border-line bg-surface p-5">
-        <p className="text-lg font-medium">No grade for this domain</p>
+        <p className="font-display text-h3">No grade for this domain</p>
         <p className="mt-1 text-sm text-ink-muted">
           Too many checks could not complete for a grade to be fair. What we did
           confirm is below.

@@ -52,7 +52,7 @@ export default function MethodologyContent({ onVersions }) {
       {/* --- scoring ------------------------------------------------------ */}
       <motion.section variants={fadeUp} className="space-y-4">
         <div>
-          <h2 className="text-lg font-medium">
+          <h2 className="font-display text-h3">
             The scoring rules
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-muted">
@@ -134,7 +134,7 @@ export default function MethodologyContent({ onVersions }) {
 
       {/* --- grades ------------------------------------------------------- */}
       <motion.section variants={fadeUp} className="space-y-4">
-        <h2 className="text-lg font-medium">The grade bands</h2>
+        <h2 className="font-display text-h3">The grade bands</h2>
         <div className="overflow-hidden rounded-xl border border-line bg-surface">
           {data.grades.map((band, index) => {
             const ceiling = index === 0 ? 100 : data.grades[index - 1].floor - 1;
@@ -164,7 +164,7 @@ export default function MethodologyContent({ onVersions }) {
       {/* --- pricing ------------------------------------------------------ */}
       <motion.section variants={fadeUp} className="space-y-4">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-medium">
+          <h2 className="flex items-center gap-2 font-display text-h3">
             The rate card
             <InfoTip label="What these rates are and are not">
               These are directional estimates of the Indian cyber market, sanity

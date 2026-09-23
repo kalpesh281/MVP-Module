@@ -125,8 +125,13 @@ export default function InfoTip({ label, children, align = 'left' }) {
             initial="hidden"
             animate="show"
             exit="exit"
-            className={`absolute z-30 block w-max rounded-xl border border-line
-                        bg-surface p-3.5 text-sm leading-relaxed text-ink-muted
+            // `font-sans tracking-normal font-normal`: letter-spacing is
+            // inherited as a computed PIXEL value, so a tip opened from
+            // inside display type inherits that heading's negative tracking
+            // and closes up its own word spaces. Same reset as Term.
+            className={`absolute z-30 block w-max rounded-card border border-line
+                        bg-surface p-3.5 font-sans text-sm font-normal leading-relaxed
+                        tracking-normal text-ink-muted
                         ${side === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'}
                         ${align === 'right' ? 'right-0' : 'left-0'}`}
             style={{

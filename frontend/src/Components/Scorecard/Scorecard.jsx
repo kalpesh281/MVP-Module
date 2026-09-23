@@ -14,7 +14,6 @@ import PremiumCard from './PremiumCard';
 import FixList from './FixList';
 import Strengths from './Strengths';
 import ProfileCard from './ProfileCard';
-import CachedNotice from './CachedNotice';
 import CtaCard from './CtaCard';
 import ScenarioBlock from './ScenarioBlock';
 import ReportNav from './ReportNav';
@@ -110,7 +109,9 @@ export default function Scorecard({
       render: () => (
         <>
           {result.headline && (
-            <motion.p variants={fadeUp} className="text-xl leading-relaxed tracking-tight">
+            // The AI's one-sentence read on the scan, and the first thing on
+            // this step. It is a headline, so it is set as one.
+            <motion.p variants={fadeUp} className="max-w-3xl font-display text-h2 text-balance">
               {result.headline}
             </motion.p>
           )}
@@ -184,14 +185,24 @@ export default function Scorecard({
 
   return (
     <div className="space-y-5" ref={topRef}>
-      {cached && <CachedNotice ageSeconds={cacheAgeSeconds} onRefresh={onRefresh} />}
+      {/* The cached-result notice used to be its own full-width bar above
+          this one. Two stacked bars saying two small things is a lot of the
+          first screen spent on furniture, so the age and the re-check moved
+          into the right-hand end of this one.
 
+          It is NOT dropped. "A cached result is never presented as live" is
+          a rule the product is built on — docs/database.md section 5 — and
+          removing the only thing that states the age would quietly turn a
+          six-hour-old scan into an apparently fresh one. */}
       <ResultRail
         grade={simulated.grade}
         score={simulated.score}
         premium={simulated.premium}
         changed={changed}
         suppressed={result.grade_suppressed && !changed}
+        cached={cached}
+        cacheAgeSeconds={cacheAgeSeconds}
+        onRefresh={onRefresh}
       />
 
       <ReportNav steps={steps} current={step} onSelect={go} />
@@ -243,11 +254,12 @@ export default function Scorecard({
         </button>
       </div>
 
-      <p className="pt-1 text-xs text-ink-faint">
-        Scoring rules {result.rubric_version} · rate card {result.rate_version}.
-        Every point traces to a published rule, so this domain scanned again
-        produces the same grade.
-      </p>
+      {/* The version footnote that used to sit here is gone. It repeated on
+          all three steps, and both halves of it are already on screen: the
+          versions are in the footer, and "every point traces to a published
+          rule" is the Sources dialog's entire subject. A line that restates
+          what is one click away on every page is noise at the foot of a
+          report someone is reading for the first time. */}
     </div>
   );
 }

@@ -17,6 +17,12 @@ import ProvenanceContent from '../Methodology/ProvenanceContent';
  * has while mid-report — "where did 18 points come from?" — and routing
  * them away to answer it costs them their place.
  *
+ * The bar is **opaque**, not translucent. At 85% with a backdrop blur a
+ * card scrolling underneath stayed faintly visible and every row was
+ * sliced in half at the header's lower edge — the page read as broken
+ * rather than as layered. A sticky bar has to be a wall, or it should not
+ * be sticky.
+ *
  * One trigger, on every route and every screen width. There used to be a
  * "Rule-based scoring" badge here with the same explanation behind an
  * info tip; it was removed once the dialog existed. Two entry points to
@@ -26,8 +32,8 @@ import ProvenanceContent from '../Methodology/ProvenanceContent';
 export default function Header() {
   const [methodologyOpen, setMethodologyOpen] = useState(false);
   return (
-    <header className='sticky top-0 z-40 bg-canvas/85 backdrop-blur-md'>
-      <div className='flex w-full items-center justify-between gap-4 px-5 py-3.5 sm:px-8'>
+    <header className='sticky top-0 z-40 border-b border-line bg-canvas'>
+      <div className='shell flex items-center justify-between gap-4 py-4'>
         <Link
           to='/'
           className='flex items-center gap-2.5 transition-opacity hover:opacity-80'

@@ -88,7 +88,10 @@ export default function PremiumCard({
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: EASE }}
-        className="mt-2 text-3xl font-semibold tabular-nums tracking-tight"
+        // The second-most-important number on the page, and it was set at
+        // 30px — the size of a section heading. A premium range is the thing
+        // a founder repeats to a co-founder; it earns display type.
+        className="mt-2 font-display text-figure tabular-nums"
       >
         {rupeeRange(premium)}
       </motion.p>

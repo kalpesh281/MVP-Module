@@ -34,7 +34,7 @@ export default function FixList({ fixes, simulated }) {
   return (
     <section aria-labelledby="fixes-heading">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="fixes-heading" className="text-lg font-medium">
+        <h2 id="fixes-heading" className="font-display text-h3">
           What to fix, best value first
         </h2>
         <button

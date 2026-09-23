@@ -133,7 +133,7 @@ export default function ScenarioBlock({
     >
       <div className="p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h3 className="text-lg font-medium tracking-tight">{active.title}</h3>
+          <h3 className="font-display text-h3">{active.title}</h3>
           {remaining > 0 && (
             <span className="text-xs text-ink-faint">
               {remaining} more {remaining === 1 ? 'exposure' : 'exposures'} after this

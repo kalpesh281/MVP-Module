@@ -61,6 +61,16 @@ export default function Term({ id, children }) {
       </button>
 
       <AnimatePresence>
+        {/* `tracking-normal` and `font-sans` are not decoration — they are a
+            fix. `letter-spacing` is inherited as a COMPUTED PIXEL value, not
+            as the `em` it was written in. This popover opens inside an h1
+            set at 56px with -0.035em of tracking, which computes to -1.96px
+            and is then inherited by every descendant. At the popover's 14px
+            that is nearly two pixels pulled out of every letter gap, which
+            closes the word spaces entirely: "The person at the insurer" had
+            been rendering as "Thepersonattheinsurer".
+
+            Any small text nested inside display type needs this reset. */}
         {open && (
           <motion.span
             id={tipId}
@@ -69,8 +79,9 @@ export default function Term({ id, children }) {
             initial="hidden"
             animate="show"
             exit="exit"
-            className="absolute left-0 top-full z-30 mt-2 block w-max rounded-xl border border-line
-                       bg-surface p-3 text-left text-sm font-normal normal-case leading-relaxed text-ink-muted"
+            className="absolute left-0 top-full z-30 mt-2 block w-max rounded-card border border-line
+                       bg-surface p-3.5 text-left font-sans text-sm font-normal normal-case
+                       leading-relaxed tracking-normal text-ink-muted"
             style={{
               maxWidth: 'min(20rem, calc(100vw - 2rem))',
               boxShadow: 'var(--shadow-pop)',

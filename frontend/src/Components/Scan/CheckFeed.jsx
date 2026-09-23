@@ -24,7 +24,7 @@ export default function CheckFeed({ domain }) {
         <CircularProgress done={done} total={total} />
 
         <div className="min-w-0">
-          <h2 id="feed-heading" className="text-lg font-medium">
+          <h2 id="feed-heading" className="font-display text-h3">
             {running ? 'Checking' : 'Checked'}{' '}
             <span className="font-mono text-base">{domain}</span>
           </h2>
@@ -63,12 +63,12 @@ export default function CheckFeed({ domain }) {
         // No overflow-hidden: a tip opened on the last row was being cut
         // off at the card's edge. The rounded corners hold without it —
         // the rows are separated by divide-y, not by a clipped background.
-        className="mt-5 divide-y divide-line rounded-xl border border-line bg-surface"
+        className="mt-6 divide-y divide-line rounded-panel border border-line bg-surface"
         aria-live="polite"
         aria-busy={running}
       >
-        {checks.map((check) => (
-          <CheckRow key={check.id} check={check} />
+        {checks.map((check, index) => (
+          <CheckRow key={check.id} check={check} index={index + 1} />
         ))}
       </ul>
     </section>

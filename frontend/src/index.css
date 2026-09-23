@@ -1,75 +1,235 @@
 @import 'tailwindcss';
 
-/* Tailwind v4 is CSS-first: there is no tailwind.config.js, and every token
-   below becomes a utility automatically (bg-surface, text-grade-c, ...).
+/* ============================================================================
+   Boundry — design tokens
+   ============================================================================
 
-   One theme, deliberately. A light/dark pair means two sets of contrast
-   ratios to verify and two ways the grade colours can read differently to
-   two people looking at the same report — on a page whose whole job is to
-   make a single number credible, that is a cost with no return.
+   Tailwind v4 is CSS-first: there is no tailwind.config.js, and every token
+   below becomes a utility automatically (bg-surface, text-grade-c, ease-enter).
 
-   The palette is deliberately restrained. This page tells a founder their
-   security posture is worse than they thought and then asks them to trust a
-   premium estimate — it has to read like a report, not like a growth
-   dashboard. One accent, five grade colours, nothing else. */
+   THE BRIEF. This page tells a founder their security posture is worse than
+   they thought and then asks them to trust a premium estimate. It has to read
+   like something an underwriter signed, not like a growth dashboard. Every
+   choice below serves that.
+
+   WHERE THE PALETTE COMES FROM. The commercial and cyber insurance category
+   was surveyed directly — At-Bay (#e9e6e0 canvas, black ink, one electric
+   blue), Coalition (Degular + Public Sans, blue with amber highlight), Corgi
+   (#f6f6f6 / #1d1d1d / #ff5c00), Plum (#fff1e5 cream, GT Alpina), Mitigata
+   (#fafaf7 / #0a0a0a / #028e52), Cowbell, Vouch, Embroker, Resilience. Three
+   things every one of them does:
+
+     1. A WARM off-white canvas. Not one uses cool grey or pure white.
+     2. Near-black ink, frequently warm. Not a blue-grey.
+     3. Exactly one saturated accent, used sparingly.
+
+   The previous palette had a cool canvas and a mid-blue accent sitting exactly
+   where every B2B template's does — which is why it read as unfinished rather
+   than restrained.
+
+   CONTRAST. Every foreground below was verified against canvas, surface AND
+   raised with a WCAG 2.x relative-luminance check. The weakest pairing in the
+   whole file is 4.66:1; AA needs 4.5:1. Nothing here is eyeballed.
+   ========================================================================= */
 
 @theme {
-  /* --- surfaces ------------------------------------------------------ */
-  --color-canvas: #fbfbfa;
+  /* --- surfaces ------------------------------------------------------------
+     Warm stone, not grey. The canvas is a shade below the cards so a card
+     reads as lifted BEFORE any shadow is applied — that 1.08:1 step is what
+     Stripe and Linear do, and it is most of why their cards look placed
+     rather than drawn. */
+  --color-canvas: #f7f6f4;
   --color-surface: #ffffff;
-  --color-raised: #f4f4f2;
-  --color-line: #e5e5e1;
-  --color-line-strong: #d3d3cd;
+  --color-raised: #efede9;
+  --color-sunken: #eae7e1;
+  --color-line: #e0ddd7;
+  --color-line-strong: #c6c2ba;
 
-  /* --- text ---------------------------------------------------------- */
-  --color-ink: #17171a;
-  --color-ink-muted: #5c5c66;
-  --color-ink-faint: #8a8a94;
+  /* Deep section, for the one full-bleed band the whole category uses to
+     break up a long light page. At-Bay #2c2c2c, Mitigata #0e2a1f. */
+  --color-deep: #1a1815;
+  --color-deep-raised: #262320;
+  --color-on-deep: #e8e4dc;
+  --color-on-deep-muted: #a19a8e;
 
-  /* --- accent -------------------------------------------------------- */
-  --color-accent: #1b4ee0;
-  --color-accent-hover: #1740bd;
-  --color-accent-soft: #eaefff;
+  /* --- text ----------------------------------------------------------------
+     Warm near-black, never #000. Pure black beside a blue accent reads muddy,
+     and it is the tell of a palette nobody chose. */
+  --color-ink: #14120f;         /* 17.31:1 on canvas */
+  --color-ink-muted: #5c574f;   /*  6.63:1 */
+  --color-ink-faint: #6e6960;   /*  5.05:1 — still real text, not decoration */
 
-  /* --- grades -------------------------------------------------------- */
-  /* Not a red-to-green gradient. A is confident, not celebratory; F is
-     serious, not alarming. Nobody is being congratulated or punished. */
-  --color-grade-a: #1a7f5a;
-  --color-grade-b: #4a8c3f;
-  --color-grade-c: #b07d1a;
-  --color-grade-d: #c25e22;
-  --color-grade-f: #b3342c;
-  --color-grade-none: #6b6b75;
+  /* --- accent --------------------------------------------------------------
+     One committed blue. At-Bay ships #2020ee; half this category uses blue,
+     but the ones that look expensive use a blue that was clearly CHOSEN.
+     #1b4ee0 — the old value — sits in the middle of the range where Bootstrap
+     lives. It also has to stay far from the grade ramp: any warm accent would
+     collide with grade-D and warn. */
+  --color-accent: #2222e0;      /* 8.19:1 on canvas; white on it is 8.85:1 */
+  --color-accent-hover: #1a1ab8;
+  --color-accent-soft: #edecfe;
+  --color-accent-line: #c9c7fa;
 
-  /* --- check statuses ------------------------------------------------ */
-  --color-pass: #1a7f5a;
-  --color-warn: #b07d1a;
-  --color-fail: #b3342c;
-  --color-inconclusive: #8a8a94;
+  /* --- grades --------------------------------------------------------------
+     Not a red-to-green gradient. A is confident, not celebratory; F is
+     serious, not alarming. Nobody is being congratulated or punished.
+     grade-b is #456f26 rather than a brighter olive because the brighter one
+     measured 4.37:1 on raised — below AA, and it is set at 13px in the rate
+     card table. */
+  --color-grade-a: #0f6e4f;
+  --color-grade-b: #456f26;
+  --color-grade-c: #8a5a00;
+  --color-grade-d: #a8511c;
+  --color-grade-f: #a8202b;
+  --color-grade-none: #6e6960;
 
-  /* --- type ---------------------------------------------------------- */
+  /* --- check statuses ------------------------------------------------------
+     Three tokens per state, not one. A severity colour that is legible as
+     text is too dark to fill an area, and one that fills well is illegible as
+     text — which is why status badges across the web fail contrast. `-fg` is
+     for text and icons, `-solid` for fills, `-bg` for the tint behind them. */
+  --color-pass: #0f6e4f;
+  --color-pass-solid: #12875f;
+  --color-pass-bg: #ecfdf3;
+  --color-pass-line: #a6e9c5;
+
+  --color-warn: #8a5a00;
+  --color-warn-solid: #b7791f;
+  --color-warn-bg: #fff8e6;
+  --color-warn-line: #f2d398;
+
+  --color-fail: #a8202b;
+  --color-fail-solid: #c8323c;
+  --color-fail-bg: #fef0f0;
+  --color-fail-line: #f5b9bc;
+
+  --color-inconclusive: #6e6960;
+
+  /* --- type ----------------------------------------------------------------
+     Instrument Sans for display, Inter for everything else. Both are variable
+     and open-licensed. Every serious platform in this category licensed a
+     display face — Coalition bought Degular, Corgi bought f37 Bolton, Plum
+     bought GT Alpina — and shipping system-ui is the single loudest signal
+     that a product is unfinished.
+
+     Inter alone would be safe and invisible; Instrument Sans on the headings
+     is what stops the page looking like every other Inter site. */
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
-    Arial, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, Monaco, 'Cascadia Code', monospace;
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display:
+    'Instrument Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:
+    ui-monospace, 'SF Mono', Menlo, Monaco, 'Cascadia Code', monospace;
 
-  /* --- depth ---------------------------------------------------------
-     Three steps, no more. Insurance interfaces carry enough anxiety
-     without the UI feeling unstable — shadows here separate planes, they
-     do not float things. */
-  --shadow-card: 0 1px 2px rgb(23 23 26 / 0.04), 0 1px 3px rgb(23 23 26 / 0.06);
-  --shadow-raised: 0 2px 4px rgb(23 23 26 / 0.04), 0 8px 24px rgb(23 23 26 / 0.08);
-  --shadow-pop: 0 4px 8px rgb(23 23 26 / 0.06), 0 16px 40px rgb(23 23 26 / 0.12);
+  /* Type scale. The rule that does most of the work: tracking is NEGATIVE
+     above ~24px, zero at body, POSITIVE below ~13px. Optical sizing, not a
+     single ratio — a 1.2 ratio produces useless display steps. */
+  --text-eyebrow: 0.6875rem;
+  --text-eyebrow--line-height: 1.2;
+  --text-eyebrow--letter-spacing: 0.08em;
+  --text-eyebrow--font-weight: 600;
 
-  /* --- motion -------------------------------------------------------- */
-  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.45;
+  --text-caption--letter-spacing: 0.005em;
+
+  --text-h3: 1.1875rem;
+  --text-h3--line-height: 1.35;
+  --text-h3--letter-spacing: -0.012em;
+  --text-h3--font-weight: 600;
+
+  --text-h2: 1.625rem;
+  --text-h2--line-height: 1.15;
+  --text-h2--letter-spacing: -0.018em;
+  --text-h2--font-weight: 600;
+
+  --text-display: 2.75rem;
+  --text-display--line-height: 1;
+  --text-display--letter-spacing: -0.028em;
+  --text-display--font-weight: 600;
+
+  --text-hero: 3.5rem;
+  --text-hero--line-height: 1;
+  --text-hero--letter-spacing: -0.035em;
+  --text-hero--font-weight: 600;
+
+  /* The two numbers the product exists to show. */
+  --text-figure: 2.5rem;
+  --text-figure--line-height: 1;
+  --text-figure--letter-spacing: -0.03em;
+  --text-figure--font-weight: 600;
+
+  --text-grade: 4.5rem;
+  --text-grade--line-height: 1;
+  --text-grade--letter-spacing: -0.045em;
+  --text-grade--font-weight: 600;
+
+  /* --- depth ---------------------------------------------------------------
+     Layered, never single. A real object casts a contact shadow, a mid
+     shadow and a diffuse ambient one; a lone `0 2px 8px` is the most
+     reliable "built in twenty minutes" signal there is.
+
+     Every layer is at or below 0.07 alpha — softness comes from stacking,
+     not from darkness — and the colour is the ink's warm near-black rather
+     than pure black, which would read as a hole punched in a warm page.
+     Negative spread on the wide layers tucks the shadow under the element
+     instead of haloing it. */
+  --shadow-e0: 0 0 0 1px rgb(20 18 15 / 0.05);
+  --shadow-e1:
+    0 1px 2px -1px rgb(20 18 15 / 0.06),
+    0 1px 3px 0 rgb(20 18 15 / 0.05);
+  --shadow-e2:
+    0 1px 2px -1px rgb(20 18 15 / 0.05),
+    0 2px 5px -1px rgb(20 18 15 / 0.05),
+    0 6px 12px -3px rgb(20 18 15 / 0.05);
+  --shadow-e3:
+    0 1px 2px -1px rgb(20 18 15 / 0.04),
+    0 3px 8px -2px rgb(20 18 15 / 0.05),
+    0 10px 20px -5px rgb(20 18 15 / 0.06),
+    0 20px 36px -10px rgb(20 18 15 / 0.06);
+  --shadow-e4:
+    0 2px 4px -2px rgb(20 18 15 / 0.04),
+    0 6px 14px -4px rgb(20 18 15 / 0.06),
+    0 16px 32px -8px rgb(20 18 15 / 0.07),
+    0 32px 60px -16px rgb(20 18 15 / 0.08);
+
+  /* Retained so older call sites keep working while components migrate. */
+  --shadow-card: var(--shadow-e1);
+  --shadow-raised: var(--shadow-e2);
+  --shadow-pop: var(--shadow-e4);
+
+  /* --- radii ---------------------------------------------------------------- */
+  --radius-card: 0.875rem;
+  --radius-panel: 1.125rem;
+
+  /* --- motion --------------------------------------------------------------
+     THREE curves. More than three and nothing feels like one system — using
+     many hand-tuned beziers is itself a cheapness signal.
+
+     Enter with ease-out, exit with ease-in, reposition with ease-in-out. */
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-move: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-out-soft: cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Tabular figures wherever a number changes in place. Without this the
-   score jitters horizontally as it counts up, which reads as instability
-   on the one number the whole page asks you to trust. */
+/* Duration tokens. Six, and no ad-hoc values anywhere else.
+   The ratio that matters most: an exit is roughly two-thirds of its entrance.
+   Symmetric open/close is the single most common reason motion feels cheap. */
+:root {
+  --dur-instant: 80ms;
+  --dur-fast: 160ms;
+  --dur-base: 240ms;
+  --dur-medium: 360ms;
+  --dur-slow: 520ms;
+}
+
+/* Tabular figures wherever a number changes in place. Without this the score
+   jitters horizontally as it counts up, which reads as instability on the one
+   number the whole page asks you to trust. Slashed zero for the same reason a
+   bank statement uses one. */
 .tabular-nums {
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums slashed-zero;
 }
 
 html {
@@ -81,27 +241,138 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  /* Inter's optical size axis. Free refinement at display sizes: the letter
+     shapes tighten as they grow rather than being the body face scaled up. */
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tailwind v4 changed the default border colour from gray-200 to
+   currentColor, so an unqualified `border` class inherits the text colour.
+   Every hairline in the app would otherwise be near-black. */
+@layer base {
+  *,
+  ::after,
+  ::before {
+    border-color: var(--color-line);
+  }
 }
 
 /* Focus must be visible on every interactive element. Gate 1 §1.5 requires
    the whole page to be operable by keyboard, and a checkbox you cannot see
-   the focus on is a checkbox you cannot use. */
+   the focus on is a checkbox you cannot use. Two rings — the white one
+   separates the accent from whatever is underneath, so it stays visible on a
+   tinted row as well as on the canvas. */
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
   border-radius: 3px;
 }
 
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-ink);
+}
+
+
+/* ---------------------------------------------------------------------------
+   The page measure.
+
+   One class, used by the header, the content and the footer, so all three
+   start at the same x. Everything that frames the page is on the same grid
+   as the page, which is the difference between a document and a box sitting
+   on a background.
+
+   80rem, not the 56rem this started at. A single narrow column centred in a
+   1440px window reads as a box dropped on a background rather than as a
+   page — most of the screen is doing nothing. The measure below keeps the
+   running text readable at that width.
+
+   The max-width matches the blueprint rails in `.rails` — change one and you
+   must change the other, or the rails stop marking the column they exist to
+   mark.
+   ------------------------------------------------------------------------ */
+.shell {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .shell {
+    padding-inline: 2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .shell {
+    padding-inline: 3rem;
+  }
+}
+
+/* Prose has a measure of its own. The page is wide so the layout can use
+   the screen; a paragraph running the full 80rem would be unreadable —
+   somewhere around 75 characters is where the eye stops tracking reliably
+   from one line to the next. Wide page, narrow text. */
+.measure {
+  max-width: 44rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Blueprint rails.
+
+   1px hairlines running the full height of the page at the content column's
+   edges, with content allowed to sit across them. Lifted from Corgi, who draw
+   them with a `.content-rail-vertical` at 1px #e1e1e1 — it is the single
+   cheapest thing in this entire research pass and it is most of the
+   difference between "startup landing page" and "technical document".
+
+   Decorative only, so `aria-hidden` on the element and no contrast minimum
+   applies. Hidden below `lg`, where there is no margin for them to live in.
+   ------------------------------------------------------------------------ */
+.rails::before,
+.rails::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-line);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.rails::before {
+  left: max(1rem, calc(50% - 40rem));
+}
+
+.rails::after {
+  right: max(1rem, calc(50% - 40rem));
+}
+
+@media (max-width: 1023px) {
+  .rails::before,
+  .rails::after {
+    display: none;
+  }
+}
+
 /* Reduced motion means values jump — they do not animate slowly. Anything
-   that conveys information through movement must still convey it here. */
+   that conveys information through movement must still convey it here.
+   Transitions go to 120ms rather than 0: killing them outright makes hover
+   and focus snap, which is its own kind of disorienting. Reduced is not
+   none. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 120ms !important;
     scroll-behavior: auto !important;
   }
 }

@@ -9,6 +9,22 @@
       name="description"
       content="See what an insurer sees. Enter your domain and get a cyber risk grade, an estimated premium, and what to fix first."
     />
+
+    <!-- Instrument Sans for display, Inter for everything else. Both variable
+         and open-licensed. Every serious platform in this category licensed a
+         display face; shipping system-ui is the loudest signal a product is
+         unfinished.
+
+         preconnect to BOTH hosts: googleapis serves the CSS, gstatic serves
+         the font files, and without the second one the browser only discovers
+         gstatic after the CSS has parsed. `crossorigin` is required on the
+         gstatic hint or the connection is not reused for the font fetch. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&family=Instrument+Sans:wght@400..700&display=swap"
+    />
   </head>
   <body>
     <div id="root"></div>

@@ -38,8 +38,8 @@ export default function Footer() {
   }, []);
 
   return (
-    <footer>
-      <div className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 px-5 py-5 text-xs text-ink-faint sm:px-8">
+    <footer className="mt-auto border-t border-line">
+      <div className="shell flex flex-wrap items-center gap-x-2 gap-y-1 py-6 text-caption text-ink-faint">
         <span>Passive checks only</span>
         <span aria-hidden="true">·</span>
         <Link to="/methodology" className="underline-offset-2 transition-colors hover:text-ink-muted hover:underline">

@@ -24,7 +24,7 @@ export default function CtaCard({ scanId, onContinue }) {
 
   return (
     <section className="rounded-xl border border-accent/30 bg-accent-soft p-5">
-      <h2 className="text-lg font-medium">
+      <h2 className="font-display text-h3">
         {canContinue ? 'Want a number you can budget against?' : 'Why this range is wide'}
       </h2>
       <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">

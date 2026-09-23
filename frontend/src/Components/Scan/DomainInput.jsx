@@ -19,7 +19,12 @@ export default function DomainInput({ onSubmit, autoFocus = false, busy = false 
         event.preventDefault();
         if (ready) onSubmit(cleaned);
       }}
-      className="w-full"
+      // Capped, not full-width. The page measure is 80rem so that the
+      // layout can use the screen — but a single text field stretched to
+      // 1,100px looks like a search bar for a database, and the eye has no
+      // idea how much it is expected to type. A domain is short; the field
+      // should look like it is expecting a short thing.
+      className="w-full max-w-xl"
     >
       <label htmlFor="domain" className="sr-only">
         Your company domain
@@ -39,21 +44,33 @@ export default function DomainInput({ onSubmit, autoFocus = false, busy = false 
           placeholder="yourcompany.com"
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          className="min-w-0 flex-1 rounded-xl border border-line-strong bg-surface px-4 py-3 text-base
-                     placeholder:text-ink-faint focus:border-accent focus:outline-none"
+          className="min-w-0 flex-1 rounded-card border border-line-strong bg-surface px-4 py-2.5
+                     text-[15px] transition-colors placeholder:text-ink-faint
+                     hover:border-ink-faint focus:border-accent focus:outline-none"
         />
         <button
           type="submit"
           disabled={!ready}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3
-                     font-medium text-white transition-colors hover:bg-accent-hover
-                     disabled:cursor-not-allowed disabled:opacity-40"
+          // 0.4 opacity made the page's only call to action look broken on
+          // arrival — the first thing a visitor sees was a greyed-out button.
+          // Disabled still has to read as "not yet", not as "failed".
+          // Tight padding, like every button measured across this category
+          // — Corgi's are 8px/16px at 37px tall. A chunky button beside a
+          // slim field reads as two unrelated controls.
+          //
+          // Disabled is a muted ink, not 40% opacity: the page's only call
+          // to action used to arrive looking broken rather than looking
+          // like it was waiting for you.
+          className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-card
+                     bg-accent px-4 py-2.5 text-[15px] font-medium text-white
+                     transition-colors duration-200 hover:bg-accent-hover
+                     disabled:cursor-not-allowed disabled:bg-ink/20"
         >
-          {busy ? 'Checking…' : 'Check my domain'}
+          {busy ? 'Checking…' : 'Check'}
           {!busy && <ArrowRight className="size-4" aria-hidden="true" />}
         </button>
       </div>
-      <p className="mt-2 text-sm text-ink-faint">
+      <p className="mt-2.5 text-caption text-ink-faint">
         No sign-up. No email. We only read what your domain already publishes.
       </p>
     </form>

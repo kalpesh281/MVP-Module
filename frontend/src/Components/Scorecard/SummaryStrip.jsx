@@ -48,17 +48,20 @@ export default function SummaryStrip({ result, simulated }) {
       variants={stagger(0.07)}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-3"
-      style={{ boxShadow: 'var(--shadow-card)' }}
+      className="grid grid-cols-1 gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-3"
+      style={{ boxShadow: 'var(--shadow-e1)' }}
     >
       {cells.map(({ Icon, label, value, note }) => (
-        <motion.div key={label} variants={fadeUp} className="bg-surface p-5">
-          <dt className="flex items-center gap-1.5 text-sm text-ink-muted">
-            <Icon className="size-4 text-ink-faint" aria-hidden="true" />
+        <motion.div key={label} variants={fadeUp} className="bg-surface p-6">
+          {/* The label is an eyebrow, not a sentence: uppercase, tracked out,
+              small. It demotes itself so the figure below can be the thing
+              the eye lands on — which is the entire job of a stat tile. */}
+          <dt className="flex items-center gap-1.5 text-eyebrow uppercase text-ink-faint">
+            <Icon className="size-3.5" aria-hidden="true" />
             {label}
           </dt>
-          <dd className="mt-2 text-2xl font-semibold tabular-nums leading-none">{value}</dd>
-          <p className="mt-1.5 text-xs text-ink-faint">{note}</p>
+          <dd className="mt-3 font-display text-figure tabular-nums">{value}</dd>
+          <p className="mt-2 text-caption text-ink-faint">{note}</p>
         </motion.div>
       ))}
     </motion.dl>

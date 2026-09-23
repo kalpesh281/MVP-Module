@@ -125,7 +125,7 @@ export default function Modal({ open, onClose, title, description, children }) {
                          bg-surface px-5 py-4 sm:px-7"
             >
               <div className="min-w-0">
-                <h2 id={titleId} className="text-lg font-medium tracking-tight">
+                <h2 id={titleId} className="font-display text-h3">
                   {title}
                 </h2>
                 {description && (
