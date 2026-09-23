@@ -69,6 +69,10 @@
   --color-accent-hover: #1a1ab8;
   --color-accent-soft: #edecfe;
   --color-accent-line: #c9c7fa;
+  /* The accent, lifted until it works on `--color-deep`. #2222e0 on a warm
+     near-black is 1.7:1 — invisible. This is 6.0:1, well past the 3:1 a
+     graphical object needs. Used by the logo mark's loose bracket. */
+  --color-accent-on-deep: #8b8bf5;
 
   /* --- grades --------------------------------------------------------------
      Not a red-to-green gradient. A is confident, not celebratory; F is

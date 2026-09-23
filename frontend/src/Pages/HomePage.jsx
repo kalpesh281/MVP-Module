@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
-import { Activity, Eye, Lock } from 'lucide-react';
 
 import DomainInput from '../Components/Scan/DomainInput';
 import HeroReport from '../Components/Home/HeroReport';
@@ -10,25 +9,37 @@ import Term from '../Components/Extra/Term';
 import { selectRecentDomains } from '../Features/uiSlice';
 import { fadeUp, stagger } from '../utils/motion';
 
-const ASSURANCES = [
+/**
+ * The terms of the scan, set as a schedule.
+ *
+ * This was three cards in a row — icon, bold title, grey paragraph, ×3,
+ * equal width. The copy was fine; the *shape* was the problem. That exact
+ * composition is the default output of every landing-page generator on
+ * the internet, and a reader who has seen ten AI demos recognises it
+ * before they read a word of it.
+ *
+ * Set as label → sentence rows it reads as the terms block on an
+ * insurance schedule, which is the register this product is actually in.
+ * Same three facts, no icons, no boxes. The fixed-width label column is
+ * what does the work: a reader can answer "what do they read?" and "what
+ * do they want from me?" without reading the sentences at all.
+ */
+const TERMS = [
   {
-    Icon: Eye,
-    title: 'We only read what is already public',
-    body: 'DNS records, your certificate, your response headers, public certificate logs. Nothing is probed or logged into.',
+    label: 'What we read',
+    body: 'Only what is already public — DNS records, your certificate, your response headers, public certificate logs. Nothing is probed or logged into.',
   },
   {
-    Icon: Lock,
-    title: 'Nothing is asked of you first',
-    body: 'No sign-up, no email, no call. You get the report, then decide whether you want a closer number.',
+    label: 'What we ask',
+    body: 'Nothing, first. No sign-up, no email, no call. You get the report, then decide whether you want a closer number.',
   },
   {
     // No duration claimed. A scan takes as long as the slowest public
     // source answers, and a number here is a promise we would be breaking
     // on the first slow certificate log — on the one page whose whole job
     // is to be checkable, thirty seconds later, by the reader.
-    Icon: Activity,
-    title: 'You watch it happen',
-    body: 'Seven checks run at once, and each result appears the moment it lands — not a spinner and then an answer.',
+    label: 'What you see',
+    body: 'Seven checks running at once, each result appearing the moment it lands — not a spinner and then an answer.',
   },
 ];
 
@@ -37,17 +48,32 @@ export default function HomePage() {
   const recent = useSelector(selectRecentDomains);
 
   return (
-    <motion.div variants={stagger(0.06)} initial="hidden" animate="show" className="py-8 sm:py-14">
+    <motion.div
+      variants={stagger(0.06)}
+      initial="hidden"
+      animate="show"
+      // No top padding of its own. `Layout`'s <main> already sets 48px,
+      // and stacking another 40 on top of it was most of the empty band
+      // above the headline.
+      className="pb-8 sm:pb-14"
+    >
       {/* Two columns from `lg`. Below that the specimen would push the field
-          below the fold, and the field is the page. */}
-      <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16">
+          below the fold, and the field is the page.
+
+          `items-start`, not `items-center`. Centring balanced the shorter
+          left column against the taller specimen card, which pushed the
+          headline about 110px down the screen and left the top of the page
+          empty — the hero floated with nothing holding it to the header.
+          Both columns now hang from the same top edge. */}
+      <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16">
       <div>
-      <motion.p
-        variants={fadeUp}
-        className="text-eyebrow uppercase text-accent"
-      >
-        Cyber liability · India
-      </motion.p>
+      {/* A rule, then the eyebrow. One hairline at the top edge is what
+          stops a page starting in mid-air — it gives the first line
+          something to sit on, the way a printed document's header rule
+          does. */}
+      <motion.div variants={fadeUp} className="border-t border-line pt-4">
+        <p className="text-eyebrow uppercase text-accent">Cyber liability · India</p>
+      </motion.div>
 
       {/* Word-by-word reveal with a resolving blur. RevealText takes the
           children rather than a string so the glossary term survives. */}
@@ -57,7 +83,7 @@ export default function HomePage() {
         // Set solid. Display type at line-height 1 with tight negative
         // tracking is the whole of the "modern institutional" look — every
         // platform measured in this category does it, without exception.
-        className="mt-4 max-w-2xl font-display text-display text-balance"
+        className="mt-5 max-w-2xl font-display text-display text-balance"
       >
         {'See your company the way an'}
         <Term id="underwriter">underwriter</Term>
@@ -104,23 +130,26 @@ export default function HomePage() {
         </motion.div>
       </div>
 
-      {/* Hairline dividers rather than nested boxes. Both Corgi and Mitigata
-          build their stat strips this way, and it is the cheapest
-          "underwriter's document" cue there is — a box around every item
-          reads as a dashboard, a rule between them reads as a schedule. */}
-      <motion.div
+      {/* Hairline rules, no boxes. A box around every item reads as a
+          dashboard; a rule between them reads as a schedule, and that is
+          the cheapest "underwriter's document" cue there is. */}
+      <motion.dl
         variants={fadeUp}
-        className="mt-20 grid gap-px overflow-hidden rounded-panel border border-line bg-line sm:grid-cols-3"
-        style={{ boxShadow: 'var(--shadow-e1)' }}
+        className="mt-16 border-t border-line"
       >
-        {ASSURANCES.map(({ Icon, title, body }) => (
-          <div key={title} className="bg-surface p-6">
-            <Icon className="size-5 text-accent" aria-hidden="true" />
-            <h2 className="mt-4 font-display text-h3">{title}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-ink-muted">{body}</p>
+        {TERMS.map(({ label, body }) => (
+          <div
+            key={label}
+            className="flex flex-col gap-1 border-b border-line py-5
+                       sm:flex-row sm:items-baseline sm:gap-10 sm:py-6"
+          >
+            <dt className="shrink-0 text-eyebrow uppercase text-ink-faint sm:w-44">
+              {label}
+            </dt>
+            <dd className="max-w-2xl leading-relaxed text-ink-muted">{body}</dd>
           </div>
         ))}
-      </motion.div>
+      </motion.dl>
 
       {/* The dark band. Every platform in this category breaks a long light
           page with one inset dark panel — At-Bay, Corgi (#2c2c2c rounded

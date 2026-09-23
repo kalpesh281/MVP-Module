@@ -183,13 +183,19 @@ export default function MethodologyContent({ onVersions }) {
           </p>
         </div>
 
-        {/* Breaks out of the page's reading column on a wide screen. The
-            figures are printed in full — ₹1,20,000, not ₹1.2L — because
-            this page's whole claim is that you can check them, and a
-            rounded rate card is not a checkable one. That costs width. */}
-        <div className="-mx-4 overflow-x-auto rounded-xl border border-line bg-surface
-                        sm:mx-0 lg:-mx-20 xl:-mx-32">
-          <table className="w-full min-w-[40rem] text-sm">
+        {/* The figures are printed in full — ₹1,20,000, not ₹1.2L —
+            because this page's whole claim is that you can check them, and
+            a rounded rate card is not a checkable one. That costs width,
+            which `overflow-x-auto` absorbs by scrolling the table.
+
+            It used to buy that width with `lg:-mx-20 xl:-mx-32`, breaking
+            out of the reading column. On a 1440 screen that carried the
+            table past the blueprint rails and out to the window edge,
+            aligned with nothing on the page — it read as a layout fault
+            rather than as emphasis. A table that ignores the grid the rest
+            of the page is built on does not look wider, it looks broken. */}
+        <div className="-mx-4 overflow-x-auto rounded-xl border border-line bg-surface sm:mx-0">
+          <table className="w-full min-w-[44rem] text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
                 <th className="px-5 py-3 font-medium">Revenue band</th>

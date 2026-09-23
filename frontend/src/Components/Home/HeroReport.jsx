@@ -17,9 +17,15 @@ import { EASE } from '../../utils/motion';
  * domain, and it puts a grade and a premium on screen inside two seconds.
  *
  * **Everything here is fictional and says so.** SPECIMEN is printed across
- * it and the domain is example.com. On a page whose entire claim is that
+ * it and the domain is a placeholder. On a page whose entire claim is that
  * the numbers are checkable, a mock that could be mistaken for a real scan
  * would be the worst possible opening.
+ *
+ * The domain was `example.com` — the IANA-reserved name that cannot ever
+ * be registered. It now reads `xyztech.in`, which looks like the Indian
+ * SaaS company this is actually sold to rather than like a spec document.
+ * That trades the reserved-name guarantee for realism, which is only
+ * acceptable because SPECIMEN is stamped across the card.
  *
  * The arc draws once, the rows land in sequence, and then it stops. An
  * infinite animation beside a form is a thing competing with the form.
@@ -92,7 +98,7 @@ export default function HeroReport() {
           </div>
 
           <div className="min-w-0">
-            <p className="font-mono text-sm text-ink">example.com</p>
+            <p className="font-mono text-sm text-ink">xyztech.in</p>
             <p className="mt-1 text-caption leading-relaxed text-ink-muted">
               Good, with a few gaps worth closing before you apply.
             </p>

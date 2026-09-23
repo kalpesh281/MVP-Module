@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ScrollText, ShieldCheck } from 'lucide-react';
+import { ScrollText } from 'lucide-react';
 
+import Logo from './Logo';
 import Modal from '../Extra/Modal';
 import ProvenanceContent from '../Methodology/ProvenanceContent';
 
@@ -36,22 +37,9 @@ export default function Header() {
       <div className='shell flex items-center justify-between gap-4 py-4'>
         <Link
           to='/'
-          className='flex items-center gap-2.5 transition-opacity hover:opacity-80'
+          className='transition-opacity hover:opacity-80'
         >
-          <span className='flex size-8 items-center justify-center rounded-lg bg-accent'>
-            <ShieldCheck
-              className='size-[18px] text-white'
-              aria-hidden='true'
-            />
-          </span>
-          <span className='flex flex-col leading-none'>
-            <span className='text-[15px] font-semibold tracking-tight'>
-              Boundry
-            </span>
-            <span className='mt-0.5 hidden text-xs text-ink-faint sm:block'>
-              Cyber liability, priced on what an insurer can see
-            </span>
-          </span>
+          <Logo />
         </Link>
 
         <div className='flex shrink-0 items-center gap-2'>

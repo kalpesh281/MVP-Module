@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2, ChevronDown } from 'lucide-react';
 import { CHECK_BLURBS, CHECK_DETAIL } from '../../data/gradeMeta';
+import CheckEvidence from './CheckEvidence';
 import { EASE, expand } from '../../utils/motion';
 
 /**
@@ -66,10 +67,6 @@ export default function CheckRow({ check, index }) {
   const pending = check.status === 'pending';
   const { tone, bg, ring, chip, label, sr } = ICONS[check.status] ?? ICONS.inconclusive;
   const detail = CHECK_DETAIL[check.id];
-  // Exactly which URL the observation came from. Without it, "Missing CSP"
-  // reads as a claim about a company's whole estate rather than about the
-  // one page we requested — which is all we ever looked at.
-  const source = check.evidence?.final_url;
 
   return (
     <li className="relative">
@@ -162,18 +159,18 @@ export default function CheckRow({ check, index }) {
             exit="exit"
             className="overflow-hidden"
           >
-            <div className="space-y-3 border-t border-line bg-canvas px-5 py-4 pl-16 text-sm leading-relaxed text-ink-muted">
+            <div className="space-y-3 border-t border-line bg-canvas px-5 py-4 text-sm leading-relaxed
+                            text-ink-muted sm:pl-16">
               <p>{detail.what}</p>
               <p>{detail.why}</p>
-              {source ? (
-                <p className="text-caption">
-                  <span className="text-ink-faint">Read from </span>
-                  <code className="break-all font-mono text-ink-muted">{source}</code>
-                  <span className="text-ink-faint">
-                    {' '}— this one address, not your whole estate.
-                  </span>
-                </p>
-              ) : null}
+
+              {/* The record itself, under the explanation of it. This
+                  order is deliberate: the reader needs to know what a
+                  DMARC policy is before a DMARC policy means anything to
+                  them, and an unexplained TXT string is not evidence, it
+                  is decoration. */}
+              <CheckEvidence id={check.id} evidence={check.evidence} />
+
               <p className="border-t border-line pt-3 text-caption text-ink-faint">
                 Worth up to{' '}
                 <span className="tabular-nums font-medium text-ink-muted">
