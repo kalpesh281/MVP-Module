@@ -25,6 +25,7 @@ Product: **Cyber Risk Scorecard** — an AI-assisted cyber insurance platform fo
 | 8b | [coverage-guidance.md](coverage-guidance.md) | Limit recommendation + claim scenario modules — the two blocks that make it read like a broker | Backend + Frontend |
 | 8c | [demand-triggers.md](demand-triggers.md) | The nine reasons companies actually buy, and how the trigger enters the product | Product + Frontend |
 | 9 | [frontend.md](frontend.md) | React implementation guide: components, design tokens, the fix simulator, accessibility | Frontend |
+| 10 | [deployment.md](deployment.md) | **Putting this on a server** — a Google Cloud VM, step by step: nginx, systemd, TLS, and the five things that break in production but never on localhost | Deploying |
 
 ## Core principles
 
