@@ -40,7 +40,7 @@ export default function Header() {
           </span>
           <span className='flex flex-col leading-none'>
             <span className='text-[15px] font-semibold tracking-tight'>
-              Cyber Scorecard
+              Boundry
             </span>
             <span className='mt-0.5 hidden text-xs text-ink-faint sm:block'>
               Cyber liability, priced on what an insurer can see

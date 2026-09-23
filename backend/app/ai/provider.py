@@ -146,7 +146,7 @@ class Client:
                 "Content-Type": "application/json",
                 # OpenRouter attributes traffic by these; harmless elsewhere.
                 "HTTP-Referer": "https://example.com",
-                "X-Title": "Cyber Risk Scorecard",
+                "X-Title": "Boundry",
             },
             json=body,
         )

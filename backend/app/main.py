@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Cyber Risk Scorecard",
+    title="Boundry",
     version=RUBRIC_VERSION,
     lifespan=lifespan,
     docs_url="/api/docs",

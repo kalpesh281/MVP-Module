@@ -25,7 +25,7 @@ RATE_VERSION = "v1.1"
 # --- identity ------------------------------------------------------------
 USER_AGENT = os.getenv(
     "USER_AGENT",
-    "CyberScorecard/0.1 (+https://github.com/kalpesh281)",
+    "Boundry/0.1 (+https://github.com/kalpesh281)",
 )
 
 # --- data sources --------------------------------------------------------
