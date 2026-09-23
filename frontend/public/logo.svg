@@ -1,0 +1,18 @@
+<!-- The Boundry mark. Source of truth for anything outside React — social
+     cards, decks, an email signature. The React copy in
+     src/Components/Layout/Logo.jsx carries the same three paths inline,
+     because the header renders on every route and a 576-byte <img> is a
+     render-blocking request for a logo.
+
+     The viewBox is tightened to the glyph. The original artwork drew a
+     52x80 letter inside a 100x100 box, so more than half of every use was
+     padding — at favicon size that cost about a third of the mark's
+     legible width. The path data is untouched. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="21 11 60 88">
+  <!-- Stem and both lobes -->
+  <path d="M 25 15 H 55 A 18 18 0 0 1 73 33 A 18 18 0 0 1 55 51 A 22 22 0 0 1 77 73 A 22 22 0 0 1 55 95 H 25 Z" fill="#0F0A0F" />
+  <!-- Upper counter -->
+  <path d="M 40 30 H 50 A 6.5 6.5 0 0 1 56.5 36.5 A 6.5 6.5 0 0 1 50 43 H 40 Z" fill="#FFFFFF" />
+  <!-- Lower counter, deliberately the larger of the two -->
+  <path d="M 40 59 H 53 A 10.5 10.5 0 0 1 63.5 69.5 A 10.5 10.5 0 0 1 53 80 H 40 Z" fill="#D4FF00" />
+</svg>

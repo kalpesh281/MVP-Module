@@ -1,21 +1,21 @@
-<!-- The Boundry mark. Kept in sync by hand with
-     src/Components/Layout/Logo.jsx — same geometry, same idea: a
-     perimeter of four corner brackets with the top-right one detached and
-     sitting outside the line.
+<!-- The Boundry mark, as a tab icon.
 
-     Drawn on the filled tile rather than as a bare glyph, because a tab
-     favicon renders at 16px against whatever chrome colour the browser
-     and the OS theme happen to be using. A bare stroke disappears on a
-     dark tab strip; a tile does not. -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-  <rect width="24" height="24" rx="6" fill="#1a1815"/>
-  <g fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-     transform="translate(2.4 2.4) scale(0.8)">
-    <g stroke="#e8e4dc">
-      <path d="M10 5H7a2 2 0 0 0-2 2v3"/>
-      <path d="M5 14v3a2 2 0 0 0 2 2h3"/>
-      <path d="M14 19h3a2 2 0 0 0 2-2v-3"/>
-    </g>
-    <path d="M14 5h3a2 2 0 0 1 2 2v3" stroke="#8b8bf5" transform="translate(1.7 -1.7)"/>
+     On a tile rather than transparent, and the tile is white. The mark's
+     body is #0F0A0F: on a browser in dark mode a transparent version
+     would put a near-black letter on a near-black tab strip and leave
+     only the two counters showing, which reads as a pair of floating
+     blobs rather than as a B. A white tile fixes that everywhere at the
+     cost of nothing, and keeps the artwork exactly as drawn.
+
+     Kept in step by hand with logo.svg and with the React copy in
+     src/Components/Layout/Logo.jsx. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="22" fill="#FFFFFF"/>
+  <!-- The glyph is 52x80 at its own coordinates; this places it centred
+       with an even optical margin inside the tile. -->
+  <g transform="translate(19.5 6.5) scale(0.7)">
+    <path d="M 25 15 H 55 A 18 18 0 0 1 73 33 A 18 18 0 0 1 55 51 A 22 22 0 0 1 77 73 A 22 22 0 0 1 55 95 H 25 Z" fill="#0F0A0F" />
+    <path d="M 40 30 H 50 A 6.5 6.5 0 0 1 56.5 36.5 A 6.5 6.5 0 0 1 50 43 H 40 Z" fill="#FFFFFF" />
+    <path d="M 40 59 H 53 A 10.5 10.5 0 0 1 63.5 69.5 A 10.5 10.5 0 0 1 53 80 H 40 Z" fill="#D4FF00" />
   </g>
 </svg>

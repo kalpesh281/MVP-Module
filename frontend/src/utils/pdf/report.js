@@ -68,14 +68,16 @@ function cover(doc, d) {
   const bandH = 30;
   pdf.setFillColor(INK.deep);
   pdf.rect(0, 0, PAGE.width, bandH, 'F');
-  doc.logoMark(PAGE.margin, 9.5, 11);
-  doc.line('BOUNDRY', { size: 12, weight: 'bold', spacing: 1.1 }, PAGE.margin + 15, 15.2, {
+  /* 14mm tall, which sets the cap height of the mark just above the
+     wordmark's. `size` is the glyph's height, not its width. */
+  doc.logoMark(PAGE.margin, 8, 14);
+  doc.line('BOUNDRY', { size: 12, weight: 'bold', spacing: 1.1 }, PAGE.margin + 14, 15.2, {
     colour: INK.onDeep,
   });
   doc.line(
     'Cyber liability, priced on what an insurer can see',
     'micro',
-    PAGE.margin + 15,
+    PAGE.margin + 14,
     19.4,
     { colour: INK.onDeepMuted },
   );

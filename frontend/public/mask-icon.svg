@@ -1,0 +1,9 @@
+<!-- Safari's pinned-tab icon. Monochrome by specification: Safari discards
+     every fill and paints the whole path in a single colour the user picks,
+     so the lime and the white counter cannot survive here. The counters are
+     therefore cut OUT of the stem with fill-rule evenodd rather than laid
+     over it — flattened to one colour without that, the B would fill in
+     solid and read as a featureless slab. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="21 11 60 88">
+  <path fill-rule="evenodd" d="M 25 15 H 55 A 18 18 0 0 1 73 33 A 18 18 0 0 1 55 51 A 22 22 0 0 1 77 73 A 22 22 0 0 1 55 95 H 25 Z M 40 30 H 50 A 6.5 6.5 0 0 1 56.5 36.5 A 6.5 6.5 0 0 1 50 43 H 40 Z M 40 59 H 53 A 10.5 10.5 0 0 1 63.5 69.5 A 10.5 10.5 0 0 1 53 80 H 40 Z"/>
+</svg>

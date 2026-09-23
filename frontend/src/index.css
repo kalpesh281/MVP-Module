@@ -74,6 +74,14 @@
      graphical object needs. Used by the logo mark's loose bracket. */
   --color-accent-on-deep: #8b8bf5;
 
+  /* The logo's lime. Brand only — it is the lower counter of the mark and
+     nothing in the interface is allowed to reach for it. Recorded here so
+     that if it ever does get a use, it is this exact value and not an eyeballed
+     one. It cannot carry text: 1.1:1 on canvas, and it sits in the middle of
+     the grade ramp's warning range, where a second bright yellow-green would
+     read as a status. */
+  --color-brand-lime: #d4ff00;
+
   /* --- grades --------------------------------------------------------------
      Not a red-to-green gradient. A is confident, not celebratory; F is
      serious, not alarming. Nobody is being congratulated or punished.

@@ -295,37 +295,71 @@ export default class Doc {
   /**
    * The Boundry mark, drawn rather than rasterised.
    *
-   * Same geometry as `Components/Layout/Logo.jsx` — a perimeter of four
-   * corner brackets with the top-right one detached — on the 24-unit grid
-   * that file uses, scaled to `size`. Vector, so it stays sharp at any
-   * print resolution and adds nothing to the file size.
+   * Same artwork as `Components/Layout/Logo.jsx` and `public/logo.svg` —
+   * an asymmetric B with a small upper counter and a large lime lower
+   * one — rebuilt out of jsPDF primitives. Vector, so it stays sharp at
+   * any print resolution and costs nothing in file size. Embedding a PNG
+   * would have been fewer lines and would have put a soft-edged bitmap at
+   * the top of a document whose whole argument is precision.
+   *
+   * **Set reversed.** The masthead band is `--color-deep` and the mark's
+   * body is `#0F0A0F`; drawn naturally it would vanish into the band and
+   * leave the two counters floating. The body takes the light ink, the
+   * upper counter is knocked out in the band's own colour, and the lime
+   * is untouched — it is the one part of the mark a reader remembers.
+   *
+   * The SVG's semicircular arcs become cubic beziers at the usual
+   * k = 0.5523 (the ratio that makes a bezier match a quarter circle to
+   * within a thousandth of the radius).
    */
-  logoMark(x, y, size, { stroke = INK.onDeep, loose = '#8b8bf5' } = {}) {
-    const k = size / 24;
-    const P = (ux, uy) => [x + ux * k, y + uy * k];
+  logoMark(x, y, size, {
+    body = INK.onDeep,
+    counterTop = INK.deep,
+    counterBottom = '#D4FF00',
+  } = {}) {
     const pdf = this.pdf;
-    pdf.setLineWidth(2 * k);
-    pdf.setLineJoin('round');
-    pdf.setLineCap('round');
+    /* The glyph is 60 units wide and 88 tall in the artwork's own
+       coordinates, offset from its origin at (21, 11). `size` is its
+       HEIGHT — the mark is taller than it is wide, and sizing it on width
+       would leave it short beside the wordmark. */
+    const k = size / 88;
+    const px = (ux) => x + (ux - 21) * k;
+    const py = (uy) => y + (uy - 11) * k;
+    const C = 0.5523;
 
-    const bracket = (pts, colour) => {
-      pdf.setDrawColor(colour);
-      for (let i = 0; i < pts.length - 1; i += 1) {
-        const [ax, ay] = P(...pts[i]);
-        const [bx, by] = P(...pts[i + 1]);
-        pdf.line(ax, ay, bx, by);
-      }
-    };
+    /* Each entry is either [dx, dy] for a line or six values for a cubic
+       bezier, all relative to the previous point, and all in artwork
+       units — `lines()` scales them. */
+    const stem = [
+      [30, 0],                                            // top edge
+      [18 * C, 0, 18, 18 - 18 * C, 18, 18],               // upper lobe, out
+      [0, 18 * C, -(18 - 18 * C), 18, -18, 18],           // upper lobe, back
+      [22 * C, 0, 22, 22 - 22 * C, 22, 22],               // lower lobe, out
+      [0, 22 * C, -(22 - 22 * C), 22, -22, 22],           // lower lobe, back
+      [-30, 0],                                           // bottom edge
+    ];
+    const upperCounter = [
+      [10, 0],
+      [6.5 * C, 0, 6.5, 6.5 - 6.5 * C, 6.5, 6.5],
+      [0, 6.5 * C, -(6.5 - 6.5 * C), 6.5, -6.5, 6.5],
+      [-10, 0],
+    ];
+    const lowerCounter = [
+      [13, 0],
+      [10.5 * C, 0, 10.5, 10.5 - 10.5 * C, 10.5, 10.5],
+      [0, 10.5 * C, -(10.5 - 10.5 * C), 10.5, -10.5, 10.5],
+      [-13, 0],
+    ];
 
-    bracket([[10, 5], [5.6, 5], [5, 5.6], [5, 10]], stroke); // top left
-    bracket([[5, 14], [5, 18.4], [5.6, 19], [10, 19]], stroke); // bottom left
-    bracket([[14, 19], [18.4, 19], [19, 18.4], [19, 14]], stroke); // bottom right
-    // The one that is not on the perimeter.
-    bracket(
-      [[15.7, 3.3], [18.4, 3.3], [19, 3.9], [19, 8.3]],
-      loose,
-    );
-    pdf.setLineWidth(0.2);
+    /* Painted in order: the body first, then both counters over it.
+       jsPDF has no even-odd fill for a compound path, so the counters are
+       separate shapes laid on top rather than holes cut out of one. */
+    pdf.setFillColor(body);
+    pdf.lines(stem, px(25), py(15), [k, k], 'F', true);
+    pdf.setFillColor(counterTop);
+    pdf.lines(upperCounter, px(40), py(30), [k, k], 'F', true);
+    pdf.setFillColor(counterBottom);
+    pdf.lines(lowerCounter, px(40), py(59), [k, k], 'F', true);
     return this;
   }
 

@@ -2,13 +2,64 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Boundry</title>
     <meta
       name="description"
       content="See what an insurer sees. Enter your domain and get a cyber risk grade, an estimated premium, and what to fix first."
     />
+
+    <!-- The mark, once per surface that can show one. All four are the
+         same artwork; they differ only because each surface imposes its
+         own constraint.
+
+         favicon    SVG on a white tile. Transparent would put the mark's
+                    near-black body on a dark tab strip and leave only the
+                    two counters visible.
+         apple-touch iOS ignores SVG and applies its own corner radius, so
+                    this is a 180px PNG drawn square and edge to edge.
+         mask-icon  Safari flattens pinned tabs to one colour, so that file
+                    cuts the counters out instead of layering them.
+         og:image   The link preview. This is the one people actually see
+                    first — a URL pasted into WhatsApp or Slack on the way
+                    to a client meeting. -->
+    <!-- `?v=` is a cache-buster, and it is not optional. Files in
+         `public/` keep their own names through the build, so unlike
+         everything in `/assets/` they are NOT content-hashed — and a
+         browser treats a favicon as effectively permanent, in a store
+         that survives a hard refresh. The first mark change shipped
+         correctly to the server and kept showing the old icon in a tab
+         that had already seen it. Bump this whenever the artwork changes. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
+    <link rel="mask-icon" href="/mask-icon.svg?v=2" color="#0F0A0F" />
+
+    <!-- Matches --color-canvas, so the address bar on Android blends into
+         the page instead of ending it with a white line. -->
+    <meta name="theme-color" content="#f7f6f4" />
+
+    <!-- Absolute URLs, because a scraper has no page to resolve against.
+         TODO: swap the origin for the domain when one is bought — a raw IP
+         here works but reads as unfinished in a shared preview. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Boundry" />
+    <meta property="og:title" content="See your company the way an underwriter does." />
+    <meta
+      property="og:description"
+      content="A security grade, an estimated premium for cover at your size, and what to fix before you apply. No sign-up."
+    />
+    <meta property="og:url" content="http://34.180.15.100/" />
+    <meta property="og:image" content="http://34.180.15.100/og.png?v=2" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Boundry — cyber liability, priced on what an insurer can see" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="See your company the way an underwriter does." />
+    <meta
+      name="twitter:description"
+      content="A security grade, an estimated premium for cover at your size, and what to fix before you apply. No sign-up."
+    />
+    <meta name="twitter:image" content="http://34.180.15.100/og.png?v=2" />
 
     <!-- Instrument Sans for display, Inter for everything else. Both variable
          and open-licensed. Every serious platform in this category licensed a
