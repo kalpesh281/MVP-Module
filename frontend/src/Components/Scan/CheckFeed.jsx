@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { selectChecks, selectCompletedCount } from '../../Features/scanSlice';
 import CheckRow from './CheckRow';
 import CircularProgress from './CircularProgress';
+import DownloadReport from '../Scorecard/DownloadReport';
 import InfoTip from '../Extra/InfoTip';
 
 /** The streaming feed.
@@ -12,7 +13,7 @@ import InfoTip from '../Extra/InfoTip';
  *  completion order. The list is a live region so a screen reader
  *  announces each result as it arrives rather than going silent for
  *  thirty seconds. */
-export default function CheckFeed({ domain }) {
+export default function CheckFeed({ domain, onDownload, downloading, downloadError }) {
   const checks = useSelector(selectChecks);
   const done = useSelector(selectCompletedCount);
   const total = checks.length;
@@ -20,10 +21,13 @@ export default function CheckFeed({ domain }) {
 
   return (
     <section aria-labelledby="feed-heading">
+      {/* The header row. `gap-4` between the dial and the heading, and the
+          download pushed to the far end with `ml-auto` — the row ran the
+          full width of the page and carried nothing on its right half. */}
       <div className="flex items-center gap-4">
         <CircularProgress done={done} total={total} />
 
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h2 id="feed-heading" className="font-display text-h3">
             {running ? 'Checking' : 'Checked'}{' '}
             <span className="font-mono text-base">{domain}</span>
@@ -57,6 +61,16 @@ export default function CheckFeed({ domain }) {
             </InfoTip>
           </p>
         </div>
+
+        {/* Disabled while checks are still landing. A report built from a
+            half-finished scan would be missing findings without saying so,
+            which is the one thing a document like this cannot do. */}
+        <DownloadReport
+          onDownload={onDownload}
+          downloading={downloading}
+          error={downloadError}
+          disabled={running}
+        />
       </div>
 
       <ul

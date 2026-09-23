@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
+import { selectChecks } from '../../Features/scanSlice';
 import { selectLimit, selectSelectedIds } from '../../Features/simulatorSlice';
+import downloadReport from '../../utils/pdf';
 import { simulate } from '../../utils/simulate';
 import { fadeUp, stagger, EASE } from '../../utils/motion';
 
@@ -61,12 +63,57 @@ export default function Scorecard({
     () => simulate(result, selectedSet, chosenLimit),
     [result, selectedSet, chosenLimit],
   );
+  /* The same lookup with nothing ticked: this company as it is today, at
+     whichever cover limit the reader has chosen. It is what the PDF
+     quotes, and it is a lookup rather than a second calculation — passing
+     an empty set through the one simulate() is what guarantees the
+     document and the bar can never disagree about a price. */
+  const EMPTY = useMemo(() => new Set(), []);
+  const baselinePremium = useMemo(
+    () => simulate(result, EMPTY, chosenLimit).premium,
+    [result, EMPTY, chosenLimit],
+  );
   const changed = simulated.selected > 0;
   const reduced = useReducedMotion();
 
   const [step, setStep] = useState(0);
   const topRef = useRef(null);
   const firstRender = useRef(true);
+
+  /* --- the PDF ------------------------------------------------------
+     Built from the scan as it was returned, never from `simulated`. A
+     report that silently baked in whichever boxes happened to be ticked
+     would be a document about a company that does not exist yet — and the
+     reader sending it to a broker has no way to know that. The plan
+     section states what every fix is worth, which is the honest way to
+     carry the same information.
+
+     The one exception is the premium, which follows the cover limit the
+     reader selected, because that is a choice about what to buy rather
+     than a claim about what is already true. */
+  const checks = useSelector(selectChecks);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState(null);
+
+  const onDownload = useCallback(async () => {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      await downloadReport({
+        result,
+        profile,
+        checks,
+        simulated: { premium: baselinePremium, limit: chosenLimit },
+        domain,
+      });
+    } catch {
+      // Never a thrown error at the user. The report is a convenience on
+      // top of a page that already has everything in it.
+      setDownloadError('Could not build the PDF');
+    } finally {
+      setDownloading(false);
+    }
+  }, [result, profile, checks, baselinePremium, chosenLimit, domain]);
 
   // Move the reader to the top of the new step. Not on first paint: the
   // page has only just resolved from a scan and yanking it would undo
@@ -99,7 +146,12 @@ export default function Scorecard({
       // working is the thing this whole product is built not to be.
       render: () => (
         <motion.div variants={fadeUp}>
-          <CheckFeed domain={domain} />
+          <CheckFeed
+            domain={domain}
+            onDownload={onDownload}
+            downloading={downloading}
+            downloadError={downloadError}
+          />
         </motion.div>
       ),
     },

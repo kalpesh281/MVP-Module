@@ -24,6 +24,10 @@ import InfoTip from '../Extra/InfoTip';
  * never presented as live" is a rule the product is built on
  * (docs/database.md section 5), and with nothing stating the age a
  * six-hour-old scan would quietly read as a fresh one.
+ *
+ * The PDF download is deliberately NOT here — see `DownloadReport`. Every
+ * control on this bar changes one of the two figures on it, and a button
+ * that does not belongs somewhere those figures are not moving.
  */
 export default function ResultRail({
   grade,
